@@ -57,6 +57,18 @@ class SoundManager {
         const audio = new Audio(path);
         audio.preload = 'auto';
         audio.volume = 0.22; // Make squawk audible over BGM
+        
+        // Mobile Autoplay unlock: play and immediately pause
+        const unlock = () => {
+          audio.play().then(() => {
+            audio.pause();
+            audio.currentTime = 0;
+          }).catch(err => {
+            console.warn("Mobile unlock skipped/blocked for:", path, err);
+          });
+        };
+        unlock();
+        
         this.audioBirds.push(audio);
       });
     }

@@ -673,6 +673,7 @@ class GameEngine {
             hasPooped: false,
             elapsedTime: 0
           });
+          window.audioManager.playBirdSquawk(); // Squawk when flying in
         } else {
           this.hazards.push({
             type: type,
