@@ -520,3 +520,43 @@ body.night-mode {
 .btn-pause:active {
   transform: scale(0.92);
 }
+
+.btn-mute {
+  background: var(--day-glass-bg);
+  border: 1px solid var(--day-glass-border);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-radius: 16px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  pointer-events: auto; /* Allow clicks */
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  outline: none;
+  padding: 0;
+  color: var(--day-text);
+}
+
+#game-container.night-mode .btn-mute {
+  background: var(--night-glass-bg);
+  border-color: var(--night-glass-border);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.1);
+  color: var(--night-accent);
+}
+
+.btn-mute svg {
+  transition: stroke var(--transition-speed), transform 0.2s;
+}
+
+.btn-mute:hover {
+  transform: scale(1.08);
+}
+
+.btn-mute:active {
+  transform: scale(0.92);
+}
+

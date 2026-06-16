@@ -30,6 +30,8 @@ class GameEngine {
     this.pauseScreen = document.getElementById('pause-screen');
     this.resumeBtn = document.getElementById('resume-btn');
     this.pauseRestartBtn = document.getElementById('pause-restart-btn');
+    this.muteBtn = document.getElementById('mute-btn');
+    this.muteIcon = document.getElementById('mute-icon');
     
     // Game State
     this.state = 'MENU'; // MENU, PLAYING, GAMEOVER
@@ -108,6 +110,24 @@ class GameEngine {
     this.lastTime = performance.now(); // Reset lastTime to prevent dt jump
   }
 
+  updateMuteIcon(isMuted) {
+    if (!this.muteIcon) return;
+    if (isMuted) {
+      // Draw speaker with an 'X' (muted state)
+      this.muteIcon.innerHTML = `
+        <path d="M11 5L6 9H2v6h4l5 4V5z"></path>
+        <line x1="23" y1="9" x2="17" y2="15"></line>
+        <line x1="17" y1="9" x2="23" y2="15"></line>
+      `;
+    } else {
+      // Draw speaker with sound waves (unmuted state)
+      this.muteIcon.innerHTML = `
+        <path d="M11 5L6 9H2v6h4l5 4V5z"></path>
+        <path id="sound-waves" d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+      `;
+    }
+  }
+
   // Set up stars once for Night Mode
   setupStars() {
     this.stars = [];
@@ -164,6 +184,11 @@ class GameEngine {
     this.pauseBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       this.pauseGame();
+    });
+    this.muteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isMuted = window.audioManager.toggleMute();
+      this.updateMuteIcon(isMuted);
     });
     this.resumeBtn.addEventListener('click', () => this.resumeGame());
     this.pauseRestartBtn.addEventListener('click', () => {

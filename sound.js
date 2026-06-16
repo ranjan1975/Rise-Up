@@ -9,6 +9,7 @@ class SoundManager {
     this.isMusicPlaying = false;
     this.isNightMode = false;
     this.isUfoActive = false;
+    this.isMuted = false;
     
     // Audio elements (pre-configured paths)
     this.dayPath = 'Balloon Drift.mp3';
@@ -57,6 +58,43 @@ class SoundManager {
         audio.preload = 'auto';
         audio.volume = 0.22; // Make squawk audible over BGM
         this.audioBirds.push(audio);
+      });
+    }
+    
+    this.updateVolumes();
+  }
+
+  toggleMute() {
+    this.isMuted = !this.isMuted;
+    this.updateVolumes();
+    
+    // Update active UFO hum if it's currently running
+    if (this.ufoHumGain) {
+      const now = this.ctx ? this.ctx.currentTime : 0;
+      if (now) {
+        const targetGain = this.isMuted ? 0 : 0.06;
+        this.ufoHumGain.gain.cancelScheduledValues(now);
+        this.ufoHumGain.gain.setValueAtTime(this.ufoHumGain.gain.value, now);
+        this.ufoHumGain.gain.linearRampToValueAtTime(targetGain, now + 0.1);
+      }
+    }
+    
+    return this.isMuted;
+  }
+
+  updateVolumes() {
+    if (this.audioDay) {
+      this.audioDay.volume = this.isMuted ? 0 : 0.14;
+    }
+    if (this.audioNight) {
+      this.audioNight.volume = this.isMuted ? 0 : 0.14;
+    }
+    if (this.audioUfo) {
+      this.audioUfo.volume = this.isMuted ? 0 : 0.18;
+    }
+    if (this.audioBirds) {
+      this.audioBirds.forEach(audio => {
+        audio.volume = this.isMuted ? 0 : 0.22;
       });
     }
   }
@@ -293,7 +331,8 @@ class SoundManager {
     this.ufoHumGain.connect(this.ctx.destination);
 
     this.ufoHumGain.gain.setValueAtTime(0, now);
-    this.ufoHumGain.gain.linearRampToValueAtTime(0.06, now + 0.6); // Fade in smoothly
+    const targetHumGain = this.isMuted ? 0 : 0.06;
+    this.ufoHumGain.gain.linearRampToValueAtTime(targetHumGain, now + 0.6); // Fade in smoothly
 
     this.ufoHumOsc.start(now);
     this.ufoHumLFO.start(now);
