@@ -46,6 +46,8 @@ class GameEngine {
     this.distance = 0; // Simulated altitude
     this.magnetTimer = 0;
     this.freezeTimer = 0;
+    this.autopilotTimer = 0;
+    this.lastAutopilotScore = 0;
     
     // Game Entities
     this.balloons = [];
@@ -307,6 +309,8 @@ class GameEngine {
     this.distance = 0;
     this.magnetTimer = 0;
     this.freezeTimer = 0;
+    this.autopilotTimer = 0;
+    this.lastAutopilotScore = 0;
     this.level = 1;
     this.balloons = [];
     this.hazards = [];
@@ -515,12 +519,28 @@ class GameEngine {
     if (this.freezeTimer > 0) {
       this.freezeTimer = Math.max(0, this.freezeTimer - dt);
     }
+    if (this.autopilotTimer > 0) {
+      this.autopilotTimer = Math.max(0, this.autopilotTimer - dt);
+    }
+
+    // Set scrollSpeed (2X during autopilot)
+    const baseSpeed = this.isNightMode ? 160 : 120;
+    this.scrollSpeed = this.autopilotTimer > 0 ? baseSpeed * 2 : baseSpeed;
 
     const envDt = dt * (this.freezeTimer > 0 ? 0.5 : 1.0);
 
     // 1. Update Altitudes & Distance Score (minus any poop penalties)
     this.distance += this.scrollSpeed * envDt;
     this.score = Math.max(0, Math.floor(this.distance / 10) + this.coins * 5 - this.scorePenalty);
+    
+    // Trigger Autopilot when score increases by 1000 points
+    const currentMilestone = Math.floor(this.score / 1000);
+    const lastMilestone = Math.floor(this.lastAutopilotScore / 1000);
+    if (currentMilestone > lastMilestone && currentMilestone > 0 && this.autopilotTimer <= 0) {
+      this.autopilotTimer = 15.0;
+      window.audioManager.playAutopilotActivate();
+    }
+    this.lastAutopilotScore = this.score;
     
     // Update Score Board UI
     this.scoreVal.innerText = this.score;
@@ -564,28 +584,32 @@ class GameEngine {
       }
       
       if (idx === this.activeBalloonIdx) {
-        // Handle Active keyboard / joystick inputs
-        let moveSpeed = 260; // Px per second
-        let dx = 0;
-        let dy = 0;
+        if (this.autopilotTimer > 0) {
+          this.steerAutopilot(balloon, dt);
+        } else {
+          // Handle Active keyboard / joystick inputs
+          let moveSpeed = 260; // Px per second
+          let dx = 0;
+          let dy = 0;
 
-        if (this.keys['ArrowLeft'] || this.keys['KeyA']) dx = -1;
-        if (this.keys['ArrowRight'] || this.keys['KeyD']) dx = 1;
-        if (this.keys['ArrowUp'] || this.keys['KeyW']) dy = -1;
-        if (this.keys['ArrowDown'] || this.keys['KeyS']) dy = 1;
+          if (this.keys['ArrowLeft'] || this.keys['KeyA']) dx = -1;
+          if (this.keys['ArrowRight'] || this.keys['KeyD']) dx = 1;
+          if (this.keys['ArrowUp'] || this.keys['KeyW']) dy = -1;
+          if (this.keys['ArrowDown'] || this.keys['KeyS']) dy = 1;
 
-        // Overlay touch/joystick vector if keyboard is empty
-        if (dx === 0 && dy === 0) {
-          dx = this.joystickInput.x;
-          dy = this.joystickInput.y;
+          // Overlay touch/joystick vector if keyboard is empty
+          if (dx === 0 && dy === 0) {
+            dx = this.joystickInput.x;
+            dy = this.joystickInput.y;
+          }
+
+          balloon.x += dx * moveSpeed * dt;
+          balloon.y += dy * moveSpeed * dt;
+
+          // Keep active balloon inside virtual screen limits
+          balloon.x = Math.max(balloon.radius, Math.min(this.virtualWidth - balloon.radius, balloon.x));
+          balloon.y = Math.max(balloon.radius + 100, Math.min(this.virtualHeight - balloon.radius - 50, balloon.y));
         }
-
-        balloon.x += dx * moveSpeed * dt;
-        balloon.y += dy * moveSpeed * dt;
-
-        // Keep active balloon inside virtual screen limits
-        balloon.x = Math.max(balloon.radius, Math.min(this.virtualWidth - balloon.radius, balloon.x));
-        balloon.y = Math.max(balloon.radius + 100, Math.min(this.virtualHeight - balloon.radius - 50, balloon.y));
       } else {
         // Inactive balloon drifts naturally upwards and sideways (drifting)
         balloon.floatOffset += balloon.floatSpeed * dt;
@@ -822,6 +846,15 @@ class GameEngine {
         const collisionThreshold = (balloon.radius + hazard.size) * 0.85;
 
         if (dist < collisionThreshold) {
+          if (this.autopilotTimer > 0) {
+            // Autopilot blocks all damage/pop and destroys/deflects regular hazards!
+            // Let's spawn green tech sparkles and destroy the hazard
+            this.spawnSparkles(hazard.x, hazard.y, '#10b981', 12, 4, 150);
+            this.hazards.splice(i, 1);
+            hazardRemoved = true;
+            break;
+          }
+
           if (balloon.hasShield) {
             // Shield absorbs the collision!
             balloon.hasShield = false;
@@ -1031,6 +1064,79 @@ class GameEngine {
       alpha: 1.0,
       decay: 1.5
     });
+  }
+
+  // Autopilot steering behavior: dodges hazards and collects coins automatically
+  steerAutopilot(balloon, dt) {
+    let targetX = this.virtualWidth / 2;
+    let targetY = this.virtualHeight - 180;
+    
+    // Find closest hazard (only count hazards that are active and on screen)
+    let closestHazard = null;
+    let minHazardDist = Infinity;
+    this.hazards.forEach(h => {
+      // Don't dodge if hazard is far above/below
+      if (h.y > balloon.y + 100) return;
+      const dist = Math.hypot(balloon.x - h.x, balloon.y - h.y);
+      if (dist < minHazardDist) {
+        minHazardDist = dist;
+        closestHazard = h;
+      }
+    });
+    
+    // Find closest coin bag
+    let closestCoin = null;
+    let minCoinDist = Infinity;
+    this.coinBags.forEach(c => {
+      const dist = Math.hypot(balloon.x - c.x, balloon.y - c.y);
+      if (dist < minCoinDist) {
+        minCoinDist = dist;
+        closestCoin = c;
+      }
+    });
+
+    // Dodge if hazard is close (within 160px)
+    if (closestHazard && minHazardDist < 160) {
+      const dx = balloon.x - closestHazard.x;
+      const dy = balloon.y - closestHazard.y;
+      
+      // Determine escape target
+      // If hazard is to the right, escape left. If left, escape right.
+      const escapeX = dx > 0 ? 1 : -1;
+      const escapeY = dy > 0 ? 0.5 : -0.5; // escape vertically too
+      
+      targetX = balloon.x + escapeX * 120;
+      targetY = balloon.y + escapeY * 80;
+      
+      // If we are pushing past screens edge, force target back inward
+      if (targetX < 40) targetX = 80;
+      if (targetX > this.virtualWidth - 40) targetX = this.virtualWidth - 80;
+    } 
+    // Otherwise steer to coin bag
+    else if (closestCoin) {
+      targetX = closestCoin.x;
+      targetY = closestCoin.y;
+    } 
+    // Drift back to comfortable center-bottom
+    else {
+      targetX = this.virtualWidth / 2;
+      targetY = this.virtualHeight - 180;
+    }
+    
+    // Smooth navigation towards target
+    const speed = 420; // Fast bot movement speed (420px/s)
+    const dx = targetX - balloon.x;
+    const dy = targetY - balloon.y;
+    const dist = Math.hypot(dx, dy);
+    
+    if (dist > 3) {
+      balloon.x += (dx / dist) * speed * dt;
+      balloon.y += (dy / dist) * speed * dt;
+    }
+    
+    // Clamp inside virtual boundaries
+    balloon.x = Math.max(balloon.radius, Math.min(this.virtualWidth - balloon.radius, balloon.x));
+    balloon.y = Math.max(balloon.radius + 100, Math.min(this.virtualHeight - balloon.radius - 50, balloon.y));
   }
 
   // Visual circular sparkles when collecting powerups or shield breaking
@@ -1670,6 +1776,48 @@ class GameEngine {
         this.ctx.restore();
       }
 
+      // Draw Autopilot Target-Lock Rings
+      if (idx === this.activeBalloonIdx && this.autopilotTimer > 0) {
+        this.ctx.save();
+        const now = performance.now();
+        const pulse = Math.sin(now / 100) * 3;
+        
+        this.ctx.strokeStyle = 'rgba(16, 185, 129, 0.85)';
+        this.ctx.lineWidth = 2.5;
+        this.ctx.shadowBlur = 10;
+        this.ctx.shadowColor = '#10b981';
+        
+        const centerY = -balloon.radius * 0.1;
+        const rad = balloon.radius * 1.5 + pulse;
+        
+        this.ctx.beginPath();
+        this.ctx.arc(0, centerY, rad, 0, Math.PI * 2);
+        this.ctx.stroke();
+        
+        this.ctx.lineWidth = 1.8;
+        this.ctx.beginPath();
+        // vertical top
+        this.ctx.moveTo(0, centerY - rad - 8);
+        this.ctx.lineTo(0, centerY - rad + 3);
+        // vertical bottom
+        this.ctx.moveTo(0, centerY + rad + 8);
+        this.ctx.lineTo(0, centerY + rad - 3);
+        // horizontal left
+        this.ctx.moveTo(-rad - 8, centerY);
+        this.ctx.lineTo(-rad + 3, centerY);
+        // horizontal right
+        this.ctx.moveTo(rad + 8, centerY);
+        this.ctx.lineTo(rad - 3, centerY);
+        this.ctx.stroke();
+        
+        this.ctx.fillStyle = '#10b981';
+        this.ctx.beginPath();
+        this.ctx.arc(0, centerY, 3, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        this.ctx.restore();
+      }
+
       this.ctx.restore();
 
       // 6. Draw active indicator above active balloon
@@ -1797,6 +1945,50 @@ class GameEngine {
       this.ctx.save();
       this.ctx.fillStyle = 'rgba(156, 39, 176, 0.08)';
       this.ctx.fillRect(0, 0, this.virtualWidth, this.virtualHeight);
+      this.ctx.restore();
+    }
+
+    // Autopilot Timer Pill (Centered status display)
+    if (this.autopilotTimer > 0) {
+      this.ctx.save();
+      this.ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+      this.ctx.strokeStyle = 'rgba(16, 185, 129, 0.85)';
+      this.ctx.lineWidth = 1.8;
+      this.ctx.shadowBlur = 10;
+      this.ctx.shadowColor = '#10b981';
+      
+      this.ctx.beginPath();
+      this.drawRoundedRect(this.virtualWidth / 2 - 80, 95, 160, 26, 13);
+      this.ctx.fill();
+      this.ctx.stroke();
+      
+      this.ctx.shadowBlur = 0;
+      this.ctx.fillStyle = '#10b981';
+      this.ctx.font = 'bold 12px var(--font-family)';
+      this.ctx.textAlign = 'center';
+      this.ctx.textBaseline = 'middle';
+      
+      const blink = Math.floor(performance.now() / 250) % 2 === 0;
+      const text = blink ? '🤖 AUTO-PILOT ON' : '🤖 AUTO-PILOT   ';
+      this.ctx.fillText(`${text} ${this.autopilotTimer.toFixed(1)}s`, this.virtualWidth / 2, 108);
+      this.ctx.restore();
+    }
+
+    // Autopilot subtle screen overlay & tech matrix lines
+    if (this.autopilotTimer > 0) {
+      this.ctx.save();
+      this.ctx.fillStyle = 'rgba(16, 185, 129, 0.04)';
+      this.ctx.fillRect(0, 0, this.virtualWidth, this.virtualHeight);
+      
+      // Horizontal tech scanning lines
+      this.ctx.strokeStyle = 'rgba(16, 185, 129, 0.07)';
+      this.ctx.lineWidth = 1.0;
+      for (let y = 0; y < this.virtualHeight; y += 16) {
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, y);
+        this.ctx.lineTo(this.virtualWidth, y);
+        this.ctx.stroke();
+      }
       this.ctx.restore();
     }
   }

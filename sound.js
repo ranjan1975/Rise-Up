@@ -608,6 +608,46 @@ class SoundManager {
     osc2.stop(now + 0.19);
   }
 
+  // Play a cool high-tech electronic sound when autopilot activates
+  playAutopilotActivate() {
+    this.init();
+    if (!this.ctx || this.isMuted) return;
+
+    const now = this.ctx.currentTime;
+    
+    // A quick double-tone computer alert sound (high resonant beep + glide)
+    const osc = this.ctx.createOscillator();
+    const filter = this.ctx.createBiquadFilter();
+    const gain = this.ctx.createGain();
+    
+    osc.type = 'sawtooth';
+    filter.type = 'lowpass';
+    
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.ctx.destination);
+    
+    // Pitch starts low and sweeps up rapidly, then triggers a high beep
+    osc.frequency.setValueAtTime(120, now);
+    osc.frequency.exponentialRampToValueAtTime(880, now + 0.15);
+    osc.frequency.setValueAtTime(880, now + 0.15);
+    osc.frequency.setValueAtTime(1046.50, now + 0.26); // C6 beep
+    
+    // Resonant lowpass sweep
+    filter.frequency.setValueAtTime(200, now);
+    filter.frequency.exponentialRampToValueAtTime(3000, now + 0.15);
+    filter.Q.setValueAtTime(8, now);
+    
+    gain.gain.setValueAtTime(0.01, now);
+    gain.gain.linearRampToValueAtTime(0.08, now + 0.08);
+    gain.gain.setValueAtTime(0.08, now + 0.15);
+    gain.gain.setValueAtTime(0.08, now + 0.26);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+    
+    osc.start(now);
+    osc.stop(now + 0.56);
+  }
+
   setUfoActive(active) {
     this.isUfoActive = active;
     if (this.isMusicPlaying) {
