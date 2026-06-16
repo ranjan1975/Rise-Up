@@ -543,6 +543,71 @@ class SoundManager {
     }
   }
 
+  // Play a happy ascending arpeggio when collecting a power-up
+  playPowerUpCollect() {
+    this.init();
+    if (!this.ctx || this.isMuted) return;
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'triangle';
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    // Quick major triad arpeggio (C5 -> E5 -> G5 -> C6)
+    const notes = [523.25, 659.25, 783.99, 1046.50];
+    notes.forEach((freq, idx) => {
+      osc.frequency.setValueAtTime(freq, now + idx * 0.05);
+    });
+
+    gain.gain.setValueAtTime(0.08, now);
+    gain.gain.setValueAtTime(0.08, now + 0.15);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+    osc.start(now);
+    osc.stop(now + 0.26);
+  }
+
+  // Play a high-pitched crystal shatter sound when a shield breaks
+  playShieldBreak() {
+    this.init();
+    if (!this.ctx || this.isMuted) return;
+
+    const now = this.ctx.currentTime;
+    
+    // Low body impact osc
+    const osc1 = this.ctx.createOscillator();
+    const gain1 = this.ctx.createGain();
+    osc1.type = 'sawtooth';
+    osc1.frequency.setValueAtTime(150, now);
+    osc1.frequency.exponentialRampToValueAtTime(30, now + 0.15);
+    osc1.connect(gain1);
+    gain1.connect(this.ctx.destination);
+
+    gain1.gain.setValueAtTime(0.12, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+    // High crystal tinkle osc
+    const osc2 = this.ctx.createOscillator();
+    const gain2 = this.ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(1800, now);
+    osc2.frequency.setValueAtTime(1400, now + 0.04);
+    osc2.frequency.setValueAtTime(2000, now + 0.08);
+    osc2.connect(gain2);
+    gain2.connect(this.ctx.destination);
+
+    gain2.gain.setValueAtTime(0.06, now);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+    osc1.start(now);
+    osc1.stop(now + 0.16);
+    osc2.start(now);
+    osc2.stop(now + 0.19);
+  }
+
   setUfoActive(active) {
     this.isUfoActive = active;
     if (this.isMusicPlaying) {

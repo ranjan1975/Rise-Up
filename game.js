@@ -44,6 +44,8 @@ class GameEngine {
     this.dayModeTimer = 0;
     this.nightModeUnlocked = false;
     this.distance = 0; // Simulated altitude
+    this.magnetTimer = 0;
+    this.freezeTimer = 0;
     
     // Game Entities
     this.balloons = [];
@@ -51,6 +53,7 @@ class GameEngine {
     this.clouds = [];
     this.hazards = [];
     this.coinBags = [];
+    this.powerUps = [];
     this.particles = [];
     this.stars = []; // For night mode
     this.birds = [];
@@ -61,6 +64,7 @@ class GameEngine {
     this.ufoWarningActive = false;
     this.ufoWarningTimer = 0;
     this.ufoWarningSirenTimer = 0;
+    this.powerUpSpawnTimer = 0;
     
     // Game Settings & Tuning
     this.scrollSpeed = 120; // Px per second
@@ -301,10 +305,13 @@ class GameEngine {
     this.dayModeTimer = 0;
     this.nightModeUnlocked = false;
     this.distance = 0;
+    this.magnetTimer = 0;
+    this.freezeTimer = 0;
     this.level = 1;
     this.balloons = [];
     this.hazards = [];
     this.coinBags = [];
+    this.powerUps = [];
     this.particles = [];
     this.clouds = [];
     this.birds = [];
@@ -313,6 +320,7 @@ class GameEngine {
     // Reset UFO boss
     this.ufo = null;
     this.ufoTimer = 0;
+    this.powerUpSpawnTimer = 0;
     this.ufoWarningActive = false;
     this.ufoWarningTimer = 0;
     this.ufoWarningSirenTimer = 0;
@@ -335,7 +343,8 @@ class GameEngine {
       floatOffset: 0,
       floatSpeed: 1.5,
       popping: false,
-      popTime: 0
+      popTime: 0,
+      hasShield: false
     });
 
     // Populate initial clouds
@@ -415,7 +424,8 @@ class GameEngine {
       floatOffset: Math.PI, // Out-of-phase floating drift
       floatSpeed: 2.0,
       popping: false,
-      popTime: 0
+      popTime: 0,
+      hasShield: false
     });
     
     // Show swap overlay indicator
@@ -498,8 +508,18 @@ class GameEngine {
 
   // Update Game Logic
   update(dt) {
+    // Decrement power-up active timers
+    if (this.magnetTimer > 0) {
+      this.magnetTimer = Math.max(0, this.magnetTimer - dt);
+    }
+    if (this.freezeTimer > 0) {
+      this.freezeTimer = Math.max(0, this.freezeTimer - dt);
+    }
+
+    const envDt = dt * (this.freezeTimer > 0 ? 0.5 : 1.0);
+
     // 1. Update Altitudes & Distance Score (minus any poop penalties)
-    this.distance += this.scrollSpeed * dt;
+    this.distance += this.scrollSpeed * envDt;
     this.score = Math.max(0, Math.floor(this.distance / 10) + this.coins * 5 - this.scorePenalty);
     
     // Update Score Board UI
@@ -585,7 +605,7 @@ class GameEngine {
 
     // 3. Spawners
     // Spawn Clouds
-    this.spawnTimers.cloud += dt;
+    this.spawnTimers.cloud += envDt;
     if (this.spawnTimers.cloud > 2.5) {
       this.spawnTimers.cloud = 0;
       this.clouds.push({
@@ -598,7 +618,7 @@ class GameEngine {
     }
 
     // Spawn Coin Bags
-    this.spawnTimers.coin += dt;
+    this.spawnTimers.coin += envDt;
     // Higher chances of coin spawn as you climb
     const coinSpawnInterval = this.isNightMode ? 1.4 : 1.8;
     if (this.spawnTimers.coin > coinSpawnInterval) {
@@ -626,8 +646,23 @@ class GameEngine {
       });
     }
 
+    // Spawn Power-Ups
+    this.powerUpSpawnTimer += envDt;
+    if (this.powerUpSpawnTimer > 18.0) {
+      this.powerUpSpawnTimer = 0;
+      const types = ['shield', 'magnet', 'freeze'];
+      const type = types[Math.floor(Math.random() * types.length)];
+      this.powerUps.push({
+        type: type,
+        x: 40 + Math.random() * (this.virtualWidth - 80),
+        y: -40,
+        vy: 100,
+        size: 16
+      });
+    }
+
     // Spawn Hazards (Poop, Debris, Asteroids) - Disabled when UFO is present
-    this.spawnTimers.hazard += dt;
+    this.spawnTimers.hazard += envDt;
     const hazardSpawnInterval = this.isNightMode ? 0.9 : 1.5; // Faster spawning at night
     if (this.spawnTimers.hazard > hazardSpawnInterval) {
       this.spawnTimers.hazard = 0;
@@ -690,37 +725,59 @@ class GameEngine {
     }
 
     // 4. Update Clouds
-    this.clouds.forEach(c => c.y += (this.scrollSpeed + c.speed) * dt);
+    this.clouds.forEach(c => c.y += (this.scrollSpeed + c.speed) * envDt);
     this.clouds = this.clouds.filter(c => c.y < this.virtualHeight + 100);
 
     // 5. Update Coin Bags
-    this.coinBags.forEach(bag => bag.y += bag.vy * dt);
+    this.coinBags.forEach(bag => {
+      if (this.magnetTimer > 0) {
+        const activeBalloon = this.balloons[this.activeBalloonIdx];
+        if (activeBalloon && activeBalloon.alive && !activeBalloon.popping) {
+          const dx = activeBalloon.x - bag.x;
+          const dy = activeBalloon.y - bag.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < 250) {
+            const pullSpeed = 450 * (1 - dist / 250) + 50;
+            const angle = Math.atan2(dy, dx);
+            bag.x += Math.cos(angle) * pullSpeed * envDt;
+            bag.y += Math.sin(angle) * pullSpeed * envDt;
+          } else {
+            bag.y += bag.vy * envDt;
+          }
+        } else {
+          bag.y += bag.vy * envDt;
+        }
+      } else {
+        bag.y += bag.vy * envDt;
+      }
+    });
     
-    // Check Coin Collisions
-    this.coinBags.forEach((bag, bagIdx) => {
-      this.balloons.forEach(balloon => {
-        if (!balloon.alive || balloon.popping) return;
+    // Check Coin Collisions (Safe backwards loop to handle splice)
+    for (let i = this.coinBags.length - 1; i >= 0; i--) {
+      const bag = this.coinBags[i];
+      let collected = false;
+      for (let j = 0; j < this.balloons.length; j++) {
+        const balloon = this.balloons[j];
+        if (!balloon.alive || balloon.popping) continue;
         
-        // Simple circle collision
         const dist = Math.hypot(balloon.x - bag.x, balloon.y - bag.y);
         if (dist < balloon.radius + bag.size) {
-          // Collect!
           this.coins += bag.value;
           window.audioManager.playCoin(bag.value);
-          
-          // Spawn coin grab text/chime effect
           this.spawnCoinSpark(bag.x, bag.y, `+${bag.value}`, balloon.color);
-          
-          this.coinBags.splice(bagIdx, 1);
+          this.coinBags.splice(i, 1);
+          collected = true;
+          break;
         }
-      });
-    });
+      }
+      if (collected) continue;
+    }
     this.coinBags = this.coinBags.filter(b => b.y < this.virtualHeight + 50);
 
     // 5.5 Update Birds
     this.birds.forEach(bird => {
-      bird.x += bird.vx * dt;
-      bird.elapsedTime += dt;
+      bird.x += bird.vx * envDt;
+      bird.elapsedTime += envDt;
       
       const passedDropX = bird.direction > 0 ? (bird.x >= bird.dropX) : (bird.x <= bird.dropX);
       if (!bird.hasPooped && passedDropX) {
@@ -744,12 +801,12 @@ class GameEngine {
     this.hazards.forEach(h => {
       if (h.type === 'poop') {
         // Zig-zag wave motion
-        h.waveOffset += 4 * dt;
-        h.x += Math.sin(h.waveOffset) * 70 * dt;
+        h.waveOffset += 4 * envDt;
+        h.x += Math.sin(h.waveOffset) * 70 * envDt;
       }
-      h.x += h.vx * dt;
-      h.y += h.vy * dt;
-      h.angle += 2 * dt; // Rotate asteroids and debris
+      h.x += h.vx * envDt;
+      h.y += h.vy * envDt;
+      h.angle += 2 * envDt; // Rotate asteroids and debris
     });
 
     // Check Hazard Collisions
@@ -765,6 +822,16 @@ class GameEngine {
         const collisionThreshold = (balloon.radius + hazard.size) * 0.85;
 
         if (dist < collisionThreshold) {
+          if (balloon.hasShield) {
+            // Shield absorbs the collision!
+            balloon.hasShield = false;
+            window.audioManager.playShieldBreak();
+            this.spawnSparkles(hazard.x, hazard.y, '#00f0ff', 15, 5, 200);
+            this.hazards.splice(i, 1);
+            hazardRemoved = true;
+            break;
+          }
+
           if (hazard.type === 'poop') {
             // Poop reduces score by 10, plays squish, displays -10 text, and is removed
             this.scorePenalty += 10;
@@ -784,6 +851,46 @@ class GameEngine {
     // Filter out off-screen hazards
     this.hazards = this.hazards.filter(h => h.y < this.virtualHeight + 50 && h.x > -50 && h.x < this.virtualWidth + 50);
 
+    // 6.2 Update Power-Ups
+    this.powerUps.forEach(p => {
+      p.y += p.vy * envDt;
+    });
+
+    // Check Power-Up Collisions (Safe backwards loop)
+    for (let i = this.powerUps.length - 1; i >= 0; i--) {
+      const p = this.powerUps[i];
+      let collected = false;
+      for (let j = 0; j < this.balloons.length; j++) {
+        const balloon = this.balloons[j];
+        if (!balloon.alive || balloon.popping) continue;
+
+        const dist = Math.hypot(balloon.x - p.x, balloon.y - p.y);
+        if (dist < balloon.radius + p.size) {
+          window.audioManager.playPowerUpCollect();
+
+          if (p.type === 'shield') {
+            balloon.hasShield = true;
+            this.spawnCoinSpark(p.x, p.y, 'SHIELD', '#00f0ff');
+            this.spawnSparkles(p.x, p.y, '#00f0ff', 12, 4, 150);
+          } else if (p.type === 'magnet') {
+            this.magnetTimer = 8.0;
+            this.spawnCoinSpark(p.x, p.y, 'MAGNET', '#ffeb3b');
+            this.spawnSparkles(p.x, p.y, '#ffeb3b', 12, 4, 150);
+          } else if (p.type === 'freeze') {
+            this.freezeTimer = 6.0;
+            this.spawnCoinSpark(p.x, p.y, 'SLOW-MO', '#e040fb');
+            this.spawnSparkles(p.x, p.y, '#e040fb', 12, 4, 150);
+          }
+
+          this.powerUps.splice(i, 1);
+          collected = true;
+          break;
+        }
+      }
+      if (collected) continue;
+    }
+    this.powerUps = this.powerUps.filter(p => p.y < this.virtualHeight + 50);
+
     // 7. Update Particles
     this.particles.forEach(p => {
       p.x += p.vx * dt;
@@ -794,7 +901,7 @@ class GameEngine {
 
     // 6.5 Update UFO Boss
     if (this.ufo === null && !this.ufoWarningActive) {
-      this.ufoTimer += dt;
+      this.ufoTimer += envDt;
       if (this.ufoTimer >= 60.0) {
         this.ufoWarningActive = true;
         this.ufoWarningTimer = 0;
@@ -830,10 +937,10 @@ class GameEngine {
 
     if (this.ufo !== null) {
       const u = this.ufo;
-      u.stateTimer += dt;
+      u.stateTimer += envDt;
 
       if (u.state === 'ENTERING') {
-        u.y += 120 * dt;
+        u.y += 120 * envDt;
         if (u.y >= u.targetY) {
           u.y = u.targetY;
           u.state = 'ATTACKING';
@@ -846,11 +953,11 @@ class GameEngine {
         const activeBalloon = this.balloons[this.activeBalloonIdx];
         if (activeBalloon && activeBalloon.alive) {
           const dx = activeBalloon.x - u.x;
-          u.x += dx * 1.5 * dt;
+          u.x += dx * 1.5 * envDt;
         }
         
         // Spurt out random light bombs
-        u.shootTimer += dt;
+        u.shootTimer += envDt;
         if (u.shootTimer >= 0.4) { // Spawn rate: every 0.4 seconds
           u.shootTimer = 0;
           window.audioManager.playUFOShoot();
@@ -873,7 +980,7 @@ class GameEngine {
         }
       } 
       else if (u.state === 'LEAVING') {
-        u.y -= 250 * dt;
+        u.y -= 250 * envDt;
         if (u.y < -100) {
           this.ufo = null;
           this.ufoTimer = 0;
@@ -924,6 +1031,38 @@ class GameEngine {
       alpha: 1.0,
       decay: 1.5
     });
+  }
+
+  // Visual circular sparkles when collecting powerups or shield breaking
+  spawnSparkles(x, y, color, count = 10, sizeMax = 4, speedMax = 120) {
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Math.random() * speedMax;
+      this.particles.push({
+        type: 'sparkle',
+        x: x,
+        y: y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        size: 1 + Math.random() * sizeMax,
+        color: color,
+        alpha: 1.0,
+        decay: 1.5 + Math.random() * 2.0
+      });
+    }
+  }
+
+  // Draw a rounded rectangle path
+  drawRoundedRect(x, y, w, h, r) {
+    this.ctx.moveTo(x + r, y);
+    this.ctx.lineTo(x + w - r, y);
+    this.ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    this.ctx.lineTo(x + w, y + h - r);
+    this.ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    this.ctx.lineTo(x + r, y + h - r);
+    this.ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    this.ctx.lineTo(x, y + r);
+    this.ctx.quadraticCurveTo(x, y, x + r, y);
   }
 
   triggerGameOver() {
@@ -1076,6 +1215,121 @@ class GameEngine {
       this.ctx.closePath();
       this.ctx.fill();
 
+      this.ctx.restore();
+    });
+
+    // 3.8 Draw Power-Ups
+    this.powerUps.forEach(p => {
+      this.ctx.save();
+      this.ctx.translate(p.x, p.y);
+      
+      // Floating bounce effect
+      const bounce = Math.sin(performance.now() / 150) * 3;
+      this.ctx.translate(0, bounce);
+      
+      // Select colors based on type
+      let glowColor, mainColor;
+      if (p.type === 'shield') {
+        glowColor = 'rgba(0, 240, 255, 0.4)';
+        mainColor = '#00f0ff';
+      } else if (p.type === 'magnet') {
+        glowColor = 'rgba(255, 235, 59, 0.4)';
+        mainColor = '#ffeb3b';
+      } else if (p.type === 'freeze') {
+        glowColor = 'rgba(156, 39, 176, 0.4)';
+        mainColor = '#e040fb';
+      }
+      
+      // Draw outer glowing bubble container
+      this.ctx.shadowBlur = 12;
+      this.ctx.shadowColor = mainColor;
+      
+      this.ctx.fillStyle = 'rgba(15, 23, 42, 0.75)'; // Dark glassy base
+      this.ctx.strokeStyle = mainColor;
+      this.ctx.lineWidth = 2;
+      this.ctx.beginPath();
+      this.ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.stroke();
+      
+      // Disable shadow for internal drawings to keep them crisp
+      this.ctx.shadowBlur = 0;
+      
+      if (p.type === 'shield') {
+        // Draw Crest/Shield shape inside
+        this.ctx.fillStyle = mainColor;
+        this.ctx.beginPath();
+        // Shield path
+        this.ctx.moveTo(0, -p.size * 0.5);
+        this.ctx.lineTo(p.size * 0.4, -p.size * 0.5);
+        this.ctx.quadraticCurveTo(p.size * 0.45, p.size * 0.1, 0, p.size * 0.6);
+        this.ctx.quadraticCurveTo(-p.size * 0.45, p.size * 0.1, -p.size * 0.4, -p.size * 0.5);
+        this.ctx.closePath();
+        this.ctx.fill();
+        
+        // Inner detail line
+        this.ctx.strokeStyle = 'rgba(15, 23, 42, 0.6)';
+        this.ctx.lineWidth = 1.5;
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, -p.size * 0.35);
+        this.ctx.lineTo(p.size * 0.25, -p.size * 0.35);
+        this.ctx.quadraticCurveTo(p.size * 0.28, p.size * 0.05, 0, p.size * 0.42);
+        this.ctx.quadraticCurveTo(-p.size * 0.28, p.size * 0.05, -p.size * 0.25, -p.size * 0.35);
+        this.ctx.closePath();
+        this.ctx.stroke();
+        
+      } else if (p.type === 'magnet') {
+        // Draw U-shaped magnet
+        this.ctx.save();
+        this.ctx.lineWidth = 5;
+        this.ctx.lineCap = 'butt';
+        
+        // Draw red U-shape
+        this.ctx.strokeStyle = '#ef4444'; // Red body
+        this.ctx.beginPath();
+        this.ctx.arc(0, 2, p.size * 0.4, 0, Math.PI, false);
+        // Extend tips upwards
+        this.ctx.lineTo(-p.size * 0.4, -p.size * 0.2);
+        this.ctx.moveTo(p.size * 0.4, 2);
+        this.ctx.lineTo(p.size * 0.4, -p.size * 0.2);
+        this.ctx.stroke();
+        
+        // Draw silver tips at the end of the U
+        this.ctx.strokeStyle = '#e2e8f0'; // Silver/white tips
+        this.ctx.lineWidth = 5;
+        this.ctx.beginPath();
+        this.ctx.moveTo(-p.size * 0.4, -p.size * 0.2);
+        this.ctx.lineTo(-p.size * 0.4, -p.size * 0.45);
+        this.ctx.moveTo(p.size * 0.4, -p.size * 0.2);
+        this.ctx.lineTo(p.size * 0.4, -p.size * 0.45);
+        this.ctx.stroke();
+        
+        this.ctx.restore();
+        
+      } else if (p.type === 'freeze') {
+        // Draw Clock face
+        this.ctx.strokeStyle = '#ffffff';
+        this.ctx.lineWidth = 1.5;
+        
+        // Clock circle outline
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, p.size * 0.55, 0, Math.PI * 2);
+        this.ctx.stroke();
+        
+        // Hour and minute hands
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, 1.8, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, 0);
+        this.ctx.lineTo(0, -p.size * 0.4); // 12 o'clock hand
+        this.ctx.moveTo(0, 0);
+        this.ctx.lineTo(p.size * 0.3, p.size * 0.15); // 4 o'clock hand
+        this.ctx.stroke();
+      }
+      
       this.ctx.restore();
     });
 
@@ -1389,6 +1643,33 @@ class GameEngine {
       );
       this.ctx.fill();
 
+      // Draw Shield Bubble if active
+      if (balloon.hasShield) {
+        this.ctx.save();
+        // Breathing animation using performance.now()
+        const pulse = 1.0 + Math.sin(performance.now() / 150) * 0.06;
+        const shieldRadius = balloon.radius * 1.5 * pulse;
+        
+        this.ctx.strokeStyle = 'rgba(0, 240, 255, 0.85)';
+        this.ctx.lineWidth = 3.5;
+        this.ctx.shadowBlur = 15;
+        this.ctx.shadowColor = '#00f0ff';
+        
+        this.ctx.beginPath();
+        // Center of the balloon is roughly at (0, -balloon.radius * 0.1)
+        this.ctx.arc(0, -balloon.radius * 0.1, shieldRadius, 0, Math.PI * 2);
+        this.ctx.stroke();
+        
+        // Draw a light cyan radial fill
+        const gradient = this.ctx.createRadialGradient(0, -balloon.radius * 0.1, shieldRadius * 0.4, 0, -balloon.radius * 0.1, shieldRadius);
+        gradient.addColorStop(0, 'rgba(0, 240, 255, 0.0)');
+        gradient.addColorStop(1, 'rgba(0, 240, 255, 0.18)');
+        this.ctx.fillStyle = gradient;
+        this.ctx.fill();
+        
+        this.ctx.restore();
+      }
+
       this.ctx.restore();
 
       // 6. Draw active indicator above active balloon
@@ -1442,9 +1723,82 @@ class GameEngine {
         }
         
         this.ctx.fillText(p.text, p.x, p.y);
+      } else if (p.type === 'sparkle') {
+        this.ctx.fillStyle = p.color;
+        this.ctx.beginPath();
+        this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        this.ctx.fill();
       }
       this.ctx.restore();
     });
+
+    // 8. Draw Active Power-Up Indicators & Overlays
+    let timerY = 95; // Starting Y coordinate below the HUD
+    
+    // Magnet Timer Pill
+    if (this.magnetTimer > 0) {
+      this.ctx.save();
+      this.ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+      this.ctx.strokeStyle = 'rgba(255, 235, 59, 0.75)';
+      this.ctx.lineWidth = 1.8;
+      this.ctx.shadowBlur = 8;
+      this.ctx.shadowColor = '#ffeb3b';
+      
+      this.ctx.beginPath();
+      this.drawRoundedRect(15, timerY, 145, 26, 13);
+      this.ctx.fill();
+      this.ctx.stroke();
+      
+      this.ctx.shadowBlur = 0;
+      this.ctx.fillStyle = '#ffeb3b';
+      this.ctx.font = 'bold 12px var(--font-family)';
+      this.ctx.textAlign = 'left';
+      this.ctx.textBaseline = 'middle';
+      this.ctx.fillText('🧲 MAGNET', 26, timerY + 13);
+      
+      this.ctx.textAlign = 'right';
+      this.ctx.fillText(`${this.magnetTimer.toFixed(1)}s`, 147, timerY + 13);
+      this.ctx.restore();
+      
+      timerY += 34;
+    }
+    
+    // Time Warp / Slow-Mo Timer Pill
+    if (this.freezeTimer > 0) {
+      this.ctx.save();
+      this.ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+      this.ctx.strokeStyle = 'rgba(156, 39, 176, 0.75)';
+      this.ctx.lineWidth = 1.8;
+      this.ctx.shadowBlur = 8;
+      this.ctx.shadowColor = '#e040fb';
+      
+      this.ctx.beginPath();
+      this.drawRoundedRect(15, timerY, 145, 26, 13);
+      this.ctx.fill();
+      this.ctx.stroke();
+      
+      this.ctx.shadowBlur = 0;
+      this.ctx.fillStyle = '#e040fb';
+      this.ctx.font = 'bold 12px var(--font-family)';
+      this.ctx.textAlign = 'left';
+      this.ctx.textBaseline = 'middle';
+      const pulseEmoji = Math.sin(performance.now() / 150) > 0 ? '⏳' : '⌛';
+      this.ctx.fillText(`${pulseEmoji} SLOW-MO`, 26, timerY + 13);
+      
+      this.ctx.textAlign = 'right';
+      this.ctx.fillText(`${this.freezeTimer.toFixed(1)}s`, 147, timerY + 13);
+      this.ctx.restore();
+      
+      timerY += 34;
+    }
+    
+    // Time Warp subtle screen overlay
+    if (this.freezeTimer > 0) {
+      this.ctx.save();
+      this.ctx.fillStyle = 'rgba(156, 39, 176, 0.08)';
+      this.ctx.fillRect(0, 0, this.virtualWidth, this.virtualHeight);
+      this.ctx.restore();
+    }
   }
 }
 
