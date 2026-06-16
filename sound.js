@@ -9,17 +9,20 @@ class SoundManager {
     this.isMusicPlaying = false;
     this.isNightMode = false;
     this.isUfoActive = false;
+    this.isRainActive = false;
     this.isMuted = false;
     
     // Audio elements (pre-configured paths)
     this.dayPath = 'Balloon Drift.mp3';
     this.nightPath = 'Moonlit Balloon Loop.mp3';
     this.ufoPath = 'UFO Descent.mp3';
+    this.rainPath = 'Rain Heavy Thunder.caf';
     this.birdPaths = ['Bird1.mp3', 'Bird2.mp3', 'Bird3.mp3'];
     
     this.audioDay = null;
     this.audioNight = null;
     this.audioUfo = null;
+    this.audioRain = null;
     this.audioBirds = [];
     this.currentAudio = null;
   }
@@ -51,6 +54,23 @@ class SoundManager {
       this.audioUfo.preload = 'auto';
       this.audioUfo.loop = true;
       this.audioUfo.volume = 0.18; // Slightly louder but still low
+    }
+    if (!this.audioRain) {
+      this.audioRain = new Audio(this.rainPath);
+      this.audioRain.preload = 'auto';
+      this.audioRain.loop = true;
+      this.audioRain.volume = 0.35;
+      
+      // Mobile Autoplay unlock: play and immediately pause
+      const unlock = () => {
+        this.audioRain.play().then(() => {
+          this.audioRain.pause();
+          this.audioRain.currentTime = 0;
+        }).catch(err => {
+          console.warn("Mobile unlock skipped/blocked for:", this.rainPath, err);
+        });
+      };
+      unlock();
     }
     if (this.audioBirds.length === 0) {
       this.birdPaths.forEach(path => {
@@ -103,6 +123,9 @@ class SoundManager {
     }
     if (this.audioUfo) {
       this.audioUfo.volume = this.isMuted ? 0 : 0.18;
+    }
+    if (this.audioRain) {
+      this.audioRain.volume = this.isMuted ? 0 : 0.35;
     }
     if (this.audioBirds) {
       this.audioBirds.forEach(audio => {
@@ -474,7 +497,9 @@ class SoundManager {
     this.init();
     
     let targetAudio = this.audioDay;
-    if (this.isUfoActive) {
+    if (this.isRainActive) {
+      targetAudio = this.audioRain;
+    } else if (this.isUfoActive) {
       targetAudio = this.audioUfo;
     } else if (this.isNightMode) {
       targetAudio = this.audioNight;
@@ -538,6 +563,13 @@ class SoundManager {
 
   setNightMode(active) {
     this.isNightMode = active;
+    if (this.isMusicPlaying) {
+      this.playCurrentBgm();
+    }
+  }
+
+  setRainMode(active) {
+    this.isRainActive = active;
     if (this.isMusicPlaying) {
       this.playCurrentBgm();
     }

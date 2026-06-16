@@ -305,6 +305,7 @@ class GameEngine {
     window.audioManager.stopUFOHum();
     window.audioManager.setNightMode(false);
     window.audioManager.setUfoActive(false);
+    window.audioManager.setRainMode(false);
     window.audioManager.startMusic();
     this.pauseBtn.classList.remove('hidden-control');
     
@@ -547,6 +548,9 @@ class GameEngine {
       if (this.rainTimer === 0 && prevRain > 0) {
         // Storm ended, start the 20-second rainbow!
         this.rainbowTimer = 20.0;
+        if (window.audioManager) {
+          window.audioManager.setRainMode(false);
+        }
       }
     }
     if (this.rainbowTimer > 0) {
@@ -981,8 +985,11 @@ class GameEngine {
             this.rainTimer = 30.0;
             this.rainbowTimer = 0.0; // Reset active rainbow if storm is re-collected
             this.lightningTimer = Math.random() * 3 + 2;
-            window.audioManager.playRainCollect();
-            window.audioManager.playThunder();
+            if (window.audioManager) {
+              window.audioManager.setRainMode(true);
+              window.audioManager.playRainCollect();
+              window.audioManager.playThunder();
+            }
             this.spawnCoinSpark(p.x, p.y, 'STORM!', '#94a3b8');
             this.spawnSparkles(p.x, p.y, '#00f0ff', 12, 4, 150);
           }
@@ -1291,6 +1298,7 @@ class GameEngine {
     this.state = 'GAMEOVER';
     window.audioManager.stopMusic();
     window.audioManager.stopUFOHum();
+    window.audioManager.setRainMode(false);
     
     // Save high score to storage
     if (this.score > this.highScore) {
