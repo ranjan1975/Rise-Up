@@ -99,9 +99,8 @@ body.night-mode {
 #hud {
   top: 20px;
   left: 20px;
-  right: 20px;
   display: flex;
-  justify-content: space-between;
+  gap: 10px;
 }
 
 .hud-item {
@@ -558,5 +557,20 @@ body.night-mode {
 
 .btn-mute:active {
   transform: scale(0.92);
+}
+
+/* Header Controls (Mute & Pause) */
+#header-controls {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  gap: 8px;
+  z-index: 30; /* Higher than screens to always be visible/clickable */
+  pointer-events: auto;
+}
+
+.hidden-control {
+  display: none !important;
 }
 

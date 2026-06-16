@@ -94,6 +94,7 @@ class GameEngine {
     window.audioManager.stopUFOHum();
     this.pauseScreen.classList.remove('hidden');
     this.mobileControls.classList.add('hidden');
+    this.pauseBtn.classList.add('hidden-control');
   }
 
   resumeGame() {
@@ -107,6 +108,7 @@ class GameEngine {
     if (this.isTouchDevice) {
       this.mobileControls.classList.remove('hidden');
     }
+    this.pauseBtn.classList.remove('hidden-control');
     this.lastTime = performance.now(); // Reset lastTime to prevent dt jump
   }
 
@@ -288,6 +290,7 @@ class GameEngine {
     window.audioManager.setNightMode(false);
     window.audioManager.setUfoActive(false);
     window.audioManager.startMusic();
+    this.pauseBtn.classList.remove('hidden-control');
     
     // Reset Game parameters
     this.score = 0;
@@ -941,6 +944,7 @@ class GameEngine {
     // Show GameOver Screen
     this.hud.classList.add('hidden');
     this.mobileControls.classList.add('hidden');
+    this.pauseBtn.classList.add('hidden-control');
     this.gameOverScreen.classList.remove('hidden');
   }
 
