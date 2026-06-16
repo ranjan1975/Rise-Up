@@ -76,6 +76,7 @@ class GameEngine {
     this.ufoWarningTimer = 0;
     this.ufoWarningSirenTimer = 0;
     this.powerUpSpawnTimer = 0;
+    this.powerUpQueue = [];
     
     // Game Settings & Tuning
     this.scrollSpeed = 120; // Px per second
@@ -339,7 +340,8 @@ class GameEngine {
     // Reset UFO boss
     this.ufo = null;
     this.ufoTimer = 0;
-    this.powerUpSpawnTimer = 0;
+    this.powerUpSpawnTimer = 9.0; // Spawns first power-up in 4 seconds!
+    this.powerUpQueue = [];
     this.ufoWarningActive = false;
     this.ufoWarningTimer = 0;
     this.ufoWarningSirenTimer = 0;
@@ -722,12 +724,22 @@ class GameEngine {
       });
     }
 
-    // Spawn Power-Ups
+    // Spawn Power-Ups (More active 13s spawning cycle)
     this.powerUpSpawnTimer += envDt;
-    if (this.powerUpSpawnTimer > 18.0) {
+    if (this.powerUpSpawnTimer > 13.0) {
       this.powerUpSpawnTimer = 0;
-      const types = ['shield', 'magnet', 'freeze', 'storm'];
-      const type = types[Math.floor(Math.random() * types.length)];
+      
+      // Cycle through power-up types to guarantee variety and easy testing
+      if (!this.powerUpQueue || this.powerUpQueue.length === 0) {
+        this.powerUpQueue = ['storm', 'shield', 'magnet', 'freeze'];
+        // Shuffle queue
+        for (let i = this.powerUpQueue.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [this.powerUpQueue[i], this.powerUpQueue[j]] = [this.powerUpQueue[j], this.powerUpQueue[i]];
+        }
+      }
+      
+      const type = this.powerUpQueue.pop();
       this.powerUps.push({
         type: type,
         x: 40 + Math.random() * (this.virtualWidth - 80),
