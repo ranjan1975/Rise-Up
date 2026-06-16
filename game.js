@@ -5,6 +5,7 @@
 
 class GameEngine {
   constructor() {
+    this.setViewportHeight();
     this.canvas = document.getElementById('game-canvas');
     this.ctx = this.canvas.getContext('2d');
     
@@ -69,6 +70,11 @@ class GameEngine {
     this.touchStart = null;
     this.joystickInput = { x: 0, y: 0 };
     this.isTouchDevice = false;
+    this.isDragging = false;
+    this.dragStartTouchX = 0;
+    this.dragStartTouchY = 0;
+    this.dragStartBalloonX = 0;
+    this.dragStartBalloonY = 0;
     
     // Event listeners
     this.initEventListeners();
@@ -116,9 +122,19 @@ class GameEngine {
     }
   }
 
+  setViewportHeight() {
+    let vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+  }
+
   initEventListeners() {
-    // Resize
-    window.addEventListener('resize', () => this.resizeCanvas());
+    // Resize & Viewport updates
+    const onResize = () => {
+      this.setViewportHeight();
+      this.resizeCanvas();
+    };
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
     
     // Keyboard
     window.addEventListener('keydown', (e) => {
@@ -155,31 +171,55 @@ class GameEngine {
       this.startGame();
     });
 
-    // Touch events for Virtual Joystick (Mobile UI)
-    const joystickBase = document.getElementById('joystick-base');
-    const joystickHandle = document.getElementById('joystick-handle');
-    let joystickActive = false;
-
-    joystickBase.addEventListener('touchstart', (e) => {
+    // Touch events for Direct Canvas Dragging
+    this.canvas.addEventListener('touchstart', (e) => {
+      if (this.state !== 'PLAYING') return;
       this.isTouchDevice = true;
       this.mobileControls.classList.remove('hidden');
-      joystickActive = true;
-      this.handleJoystickMove(e.targetTouches[0], joystickBase, joystickHandle);
-    });
+      
+      const touch = e.targetTouches[0];
+      const activeBalloon = this.balloons[this.activeBalloonIdx];
+      if (activeBalloon && activeBalloon.alive && !activeBalloon.popping) {
+        this.isDragging = true;
+        this.dragStartTouchX = touch.clientX;
+        this.dragStartTouchY = touch.clientY;
+        this.dragStartBalloonX = activeBalloon.x;
+        this.dragStartBalloonY = activeBalloon.y;
+        e.preventDefault(); // Stop page scrolling/bouncing
+      }
+    }, { passive: false });
 
-    window.addEventListener('touchmove', (e) => {
-      if (joystickActive) {
-        this.handleJoystickMove(e.targetTouches[0], joystickBase, joystickHandle);
+    this.canvas.addEventListener('touchmove', (e) => {
+      if (this.state !== 'PLAYING') return;
+      
+      if (this.isDragging) {
+        e.preventDefault(); // Stop browser scrolling/panning
+        
+        const touch = e.targetTouches[0];
+        const activeBalloon = this.balloons[this.activeBalloonIdx];
+        if (activeBalloon && activeBalloon.alive && !activeBalloon.popping) {
+          const deltaX_css = touch.clientX - this.dragStartTouchX;
+          const deltaY_css = touch.clientY - this.dragStartTouchY;
+          
+          // Convert CSS delta to virtual coordinate delta
+          const deltaX_virtual = deltaX_css / this.scaleX;
+          const deltaY_virtual = deltaY_css / this.scaleY;
+          
+          activeBalloon.x = this.dragStartBalloonX + deltaX_virtual;
+          activeBalloon.y = this.dragStartBalloonY + deltaY_virtual;
+          
+          // Clamp position to virtual screen bounds
+          activeBalloon.x = Math.max(activeBalloon.radius, Math.min(this.virtualWidth - activeBalloon.radius, activeBalloon.x));
+          activeBalloon.y = Math.max(activeBalloon.radius, Math.min(this.virtualHeight - activeBalloon.radius, activeBalloon.y));
+        }
       }
     }, { passive: false });
 
     window.addEventListener('touchend', () => {
-      if (joystickActive) {
-        joystickActive = false;
-        joystickHandle.style.left = '50%';
-        joystickHandle.style.top = '50%';
-        this.joystickInput = { x: 0, y: 0 };
-      }
+      this.isDragging = false;
+    });
+    window.addEventListener('touchcancel', () => {
+      this.isDragging = false;
     });
 
     // Fallback detection for touch pointer type to show mobile overlays
@@ -193,35 +233,6 @@ class GameEngine {
     });
   }
 
-  handleJoystickMove(touch, base, handle) {
-    const rect = base.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    
-    const dx = touch.clientX - centerX;
-    const dy = touch.clientY - centerY;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    
-    const maxRadius = rect.width / 2;
-    const angle = Math.atan2(dy, dx);
-    
-    let moveX = dx;
-    let moveY = dy;
-    
-    if (distance > maxRadius) {
-      moveX = Math.cos(angle) * maxRadius;
-      moveY = Math.sin(angle) * maxRadius;
-    }
-    
-    // Position handle visually
-    handle.style.left = `${50 + (moveX / maxRadius) * 50}%`;
-    handle.style.top = `${50 + (moveY / maxRadius) * 50}%`;
-    
-    // Normalized input vector (-1 to 1)
-    this.joystickInput.x = moveX / maxRadius;
-    this.joystickInput.y = moveY / maxRadius;
-  }
-
   resizeCanvas() {
     const container = document.getElementById('game-container');
     const rect = container.getBoundingClientRect();
@@ -230,7 +241,6 @@ class GameEngine {
     const dpr = window.devicePixelRatio || 1;
     this.canvas.width = rect.width * dpr;
     this.canvas.height = rect.height * dpr;
-    this.ctx.scale(dpr, dpr);
     
     // Virtual coordinates: 450x850 coordinate mapping
     this.virtualWidth = 450;
@@ -239,6 +249,10 @@ class GameEngine {
     // Scale drawings accordingly
     this.scaleX = rect.width / this.virtualWidth;
     this.scaleY = rect.height / this.virtualHeight;
+    
+    // Reset transform, then scale to dpr AND scale to fit virtual coordinates
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
+    this.ctx.scale(dpr * this.scaleX, dpr * this.scaleY);
   }
 
   startGame() {
