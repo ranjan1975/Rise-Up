@@ -14,10 +14,12 @@ class SoundManager {
     this.dayPath = 'Balloon Drift.mp3';
     this.nightPath = 'Moonlit Balloon Loop.mp3';
     this.ufoPath = 'UFO Descent.mp3';
+    this.birdPaths = ['Bird1.mp3', 'Bird2.mp3', 'Bird3.mp3'];
     
     this.audioDay = null;
     this.audioNight = null;
     this.audioUfo = null;
+    this.audioBirds = [];
     this.currentAudio = null;
   }
 
@@ -48,6 +50,14 @@ class SoundManager {
       this.audioUfo.preload = 'auto';
       this.audioUfo.loop = true;
       this.audioUfo.volume = 0.18; // Slightly louder but still low
+    }
+    if (this.audioBirds.length === 0) {
+      this.birdPaths.forEach(path => {
+        const audio = new Audio(path);
+        audio.preload = 'auto';
+        audio.volume = 0.22; // Make squawk audible over BGM
+        this.audioBirds.push(audio);
+      });
     }
   }
 
@@ -174,6 +184,28 @@ class SoundManager {
   // Play a funny, strange bird squawk/honk sound
   playBirdSquawk() {
     this.init();
+    
+    if (this.audioBirds.length > 0) {
+      // Pick a random bird squawk file
+      const idx = Math.floor(Math.random() * this.audioBirds.length);
+      const birdAudio = this.audioBirds[idx];
+      try {
+        birdAudio.currentTime = 0;
+        birdAudio.play().catch(err => {
+          console.warn("Autoplay blocked or audio load error for bird squawk:", err);
+          this.playSynthBirdSquawk();
+        });
+      } catch (e) {
+        console.warn("Error playing bird audio, falling back to synth:", e);
+        this.playSynthBirdSquawk();
+      }
+    } else {
+      this.playSynthBirdSquawk();
+    }
+  }
+
+  // Synthesizer fallback for bird squawk sound
+  playSynthBirdSquawk() {
     if (!this.ctx) return;
 
     const now = this.ctx.currentTime;
