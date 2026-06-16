@@ -648,6 +648,87 @@ class SoundManager {
     osc.stop(now + 0.56);
   }
 
+  // Play a bubbly splash sound when collecting the storm cloud widget
+  playRainCollect() {
+    this.init();
+    if (!this.ctx || this.isMuted) return;
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(350, now);
+    osc.frequency.exponentialRampToValueAtTime(1200, now + 0.15);
+    
+    gain.connect(this.ctx.destination);
+    osc.connect(gain);
+    
+    gain.gain.setValueAtTime(0.15, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+    
+    osc.start(now);
+    osc.stop(now + 0.21);
+  }
+
+  // Play a dynamic low frequency thunder rumble and sharp crack using Web Audio API
+  playThunder() {
+    this.init();
+    if (!this.ctx || this.isMuted) return;
+
+    const now = this.ctx.currentTime;
+    
+    // 1. Initial sharp crack
+    const osc = this.ctx.createOscillator();
+    const oscGain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(80, now);
+    osc.frequency.linearRampToValueAtTime(30, now + 0.15);
+    
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(200, now);
+    
+    osc.connect(filter);
+    filter.connect(oscGain);
+    oscGain.connect(this.ctx.destination);
+    
+    oscGain.gain.setValueAtTime(0.22, now);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+    
+    osc.start(now);
+    osc.stop(now + 0.26);
+    
+    // 2. Deep rumble
+    const rumbleOsc = this.ctx.createOscillator();
+    const rumbleFilter = this.ctx.createBiquadFilter();
+    const rumbleGain = this.ctx.createGain();
+    
+    rumbleOsc.type = 'triangle';
+    rumbleOsc.frequency.setValueAtTime(55, now);
+    for (let t = 0.1; t < 1.8; t += 0.1) {
+      rumbleOsc.frequency.setValueAtTime(40 + Math.random() * 30, now + t);
+    }
+    
+    rumbleFilter.type = 'lowpass';
+    rumbleFilter.frequency.setValueAtTime(120, now);
+    rumbleFilter.Q.setValueAtTime(3, now);
+    
+    rumbleOsc.connect(rumbleFilter);
+    rumbleFilter.connect(rumbleGain);
+    rumbleGain.connect(this.ctx.destination);
+    
+    rumbleGain.gain.setValueAtTime(0.01, now);
+    rumbleGain.gain.linearRampToValueAtTime(0.18, now + 0.1);
+    for (let t = 0.2; t < 1.8; t += 0.15) {
+      rumbleGain.gain.setValueAtTime(0.08 + Math.random() * 0.1, now + t);
+    }
+    rumbleGain.gain.exponentialRampToValueAtTime(0.001, now + 2.0);
+    
+    rumbleOsc.start(now);
+    rumbleOsc.stop(now + 2.05);
+  }
+
   setUfoActive(active) {
     this.isUfoActive = active;
     if (this.isMusicPlaying) {

@@ -49,6 +49,15 @@ class GameEngine {
     this.autopilotTimer = 0;
     this.lastAutopilotScore = 0;
     
+    // Rain & Rainbow State
+    this.rainTimer = 0;
+    this.rainbowTimer = 0;
+    this.lightningTimer = 0;
+    this.lightningFlash = 0;
+    this.currentLightningBolt = null;
+    this.raindrops = [];
+    this.setupRaindrops();
+    
     // Game Entities
     this.balloons = [];
     this.activeBalloonIdx = 0;
@@ -311,6 +320,12 @@ class GameEngine {
     this.freezeTimer = 0;
     this.autopilotTimer = 0;
     this.lastAutopilotScore = 0;
+    this.rainTimer = 0;
+    this.rainbowTimer = 0;
+    this.lightningTimer = 0;
+    this.lightningFlash = 0;
+    this.currentLightningBolt = null;
+    this.setupRaindrops();
     this.level = 1;
     this.balloons = [];
     this.hazards = [];
@@ -522,12 +537,49 @@ class GameEngine {
     if (this.autopilotTimer > 0) {
       this.autopilotTimer = Math.max(0, this.autopilotTimer - dt);
     }
+    
+    // Decrement rain and rainbow timers
+    if (this.rainTimer > 0) {
+      const prevRain = this.rainTimer;
+      this.rainTimer = Math.max(0, this.rainTimer - dt);
+      if (this.rainTimer === 0 && prevRain > 0) {
+        // Storm ended, start the 20-second rainbow!
+        this.rainbowTimer = 20.0;
+      }
+    }
+    if (this.rainbowTimer > 0) {
+      this.rainbowTimer = Math.max(0, this.rainbowTimer - dt);
+    }
+
+    const envDt = dt * (this.freezeTimer > 0 ? 0.5 : 1.0);
+
+    // Update Raindrops and Lightning during rain phase
+    if (this.rainTimer > 0) {
+      this.raindrops.forEach(drop => {
+        drop.y += drop.speed * envDt;
+        drop.x += -90 * envDt; // Wind drift to left
+        if (drop.y > this.virtualHeight) {
+          drop.y = -drop.length;
+          drop.x = Math.random() * this.virtualWidth;
+        }
+      });
+
+      this.lightningTimer -= dt;
+      if (this.lightningTimer <= 0) {
+        this.lightningTimer = Math.random() * 4 + 3; // strike every 3 to 7 seconds
+        this.lightningFlash = 0.22;
+        this.currentLightningBolt = this.generateLightningBolt();
+        window.audioManager.playThunder();
+      }
+    }
+
+    if (this.lightningFlash > 0) {
+      this.lightningFlash = Math.max(0, this.lightningFlash - dt);
+    }
 
     // Set scrollSpeed (2X during autopilot)
     const baseSpeed = this.isNightMode ? 160 : 120;
     this.scrollSpeed = this.autopilotTimer > 0 ? baseSpeed * 2 : baseSpeed;
-
-    const envDt = dt * (this.freezeTimer > 0 ? 0.5 : 1.0);
 
     // 1. Update Altitudes & Distance Score (minus any poop penalties)
     this.distance += this.scrollSpeed * envDt;
@@ -674,7 +726,7 @@ class GameEngine {
     this.powerUpSpawnTimer += envDt;
     if (this.powerUpSpawnTimer > 18.0) {
       this.powerUpSpawnTimer = 0;
-      const types = ['shield', 'magnet', 'freeze'];
+      const types = ['shield', 'magnet', 'freeze', 'storm'];
       const type = types[Math.floor(Math.random() * types.length)];
       this.powerUps.push({
         type: type,
@@ -913,6 +965,14 @@ class GameEngine {
             this.freezeTimer = 6.0;
             this.spawnCoinSpark(p.x, p.y, 'SLOW-MO', '#e040fb');
             this.spawnSparkles(p.x, p.y, '#e040fb', 12, 4, 150);
+          } else if (p.type === 'storm') {
+            this.rainTimer = 30.0;
+            this.rainbowTimer = 0.0; // Reset active rainbow if storm is re-collected
+            this.lightningTimer = Math.random() * 3 + 2;
+            window.audioManager.playRainCollect();
+            window.audioManager.playThunder();
+            this.spawnCoinSpark(p.x, p.y, 'STORM!', '#94a3b8');
+            this.spawnSparkles(p.x, p.y, '#00f0ff', 12, 4, 150);
           }
 
           this.powerUps.splice(i, 1);
@@ -1064,6 +1124,50 @@ class GameEngine {
       alpha: 1.0,
       decay: 1.5
     });
+  }
+
+  // Pre-allocate raindrop particles
+  setupRaindrops() {
+    this.raindrops = [];
+    for (let i = 0; i < 60; i++) {
+      this.raindrops.push({
+        x: Math.random() * this.virtualWidth,
+        y: Math.random() * this.virtualHeight,
+        speed: 400 + Math.random() * 200,
+        length: 15 + Math.random() * 15
+      });
+    }
+  }
+
+  // Generate a random branching lightning bolt structure
+  generateLightningBolt() {
+    const startX = Math.random() * this.virtualWidth;
+    const segments = [];
+    let currentX = startX;
+    let currentY = 0;
+    
+    while (currentY < this.virtualHeight - 100) {
+      const nextY = currentY + 30 + Math.random() * 40;
+      const nextX = currentX + (Math.random() - 0.5) * 50;
+      segments.push({ x1: currentX, y1: currentY, x2: nextX, y2: nextY });
+      
+      // 15% chance to create a branching side fork
+      if (Math.random() < 0.15) {
+        let branchX = nextX;
+        let branchY = nextY;
+        for (let j = 0; j < 3; j++) {
+          const bY = branchY + 20 + Math.random() * 20;
+          const bX = branchX + (Math.random() > 0.5 ? 15 : -15) + (Math.random() - 0.5) * 10;
+          segments.push({ x1: branchX, y1: branchY, x2: bX, y2: bY });
+          branchX = bX;
+          branchY = bY;
+        }
+      }
+      
+      currentX = nextX;
+      currentY = nextY;
+    }
+    return segments;
   }
 
   // Autopilot steering behavior: dodges hazards and collects coins automatically
@@ -1231,6 +1335,40 @@ class GameEngine {
       this.ctx.restore();
     });
 
+    // 2.2 Draw Rainbow in Background (fades in and out over 20 seconds)
+    if (this.rainbowTimer > 0) {
+      this.ctx.save();
+      
+      // Calculate smooth fade-in (first 2 seconds) and fade-out (last 3 seconds)
+      const fadeIn = Math.min(1.0, (20.0 - this.rainbowTimer) / 2.0);
+      const fadeOut = Math.min(1.0, this.rainbowTimer / 3.0);
+      const rainbowOpacity = 0.35 * fadeIn * fadeOut;
+      
+      const centerX = this.virtualWidth / 2;
+      const centerY = this.virtualHeight * 0.85; // arch center near bottom
+      const baseRadius = 240;
+      
+      // Rainbow colors: Red, Orange, Yellow, Green, Blue, Indigo, Violet
+      const colors = [
+        'rgba(239, 68, 68, ',   // Red
+        'rgba(249, 115, 22, ',   // Orange
+        'rgba(234, 179, 8, ',    // Yellow
+        'rgba(34, 197, 94, ',    // Green
+        'rgba(59, 130, 246, ',   // Blue
+        'rgba(99, 102, 241, ',   // Indigo
+        'rgba(168, 85, 247, '    // Violet
+      ];
+      
+      this.ctx.lineWidth = 5;
+      colors.forEach((colorPrefix, idx) => {
+        this.ctx.strokeStyle = colorPrefix + rainbowOpacity + ')';
+        this.ctx.beginPath();
+        this.ctx.arc(centerX, centerY, baseRadius - idx * 5, Math.PI, 0, false);
+        this.ctx.stroke();
+      });
+      this.ctx.restore();
+    }
+
     // 3. Draw Coin Bags
     this.coinBags.forEach(bag => {
       this.ctx.save();
@@ -1344,6 +1482,9 @@ class GameEngine {
       } else if (p.type === 'freeze') {
         glowColor = 'rgba(156, 39, 176, 0.4)';
         mainColor = '#e040fb';
+      } else if (p.type === 'storm') {
+        glowColor = 'rgba(0, 240, 255, 0.4)';
+        mainColor = '#94a3b8';
       }
       
       // Draw outer glowing bubble container
@@ -1433,6 +1574,24 @@ class GameEngine {
         this.ctx.lineTo(0, -p.size * 0.4); // 12 o'clock hand
         this.ctx.moveTo(0, 0);
         this.ctx.lineTo(p.size * 0.3, p.size * 0.15); // 4 o'clock hand
+        this.ctx.stroke();
+      } else if (p.type === 'storm') {
+        // Draw Storm Cloud inside
+        this.ctx.fillStyle = '#cbd5e1'; // light slate grey
+        this.ctx.beginPath();
+        this.ctx.arc(-4, 1, 7, 0, Math.PI * 2);
+        this.ctx.arc(3, -2, 8, 0, Math.PI * 2);
+        this.ctx.arc(8, 2, 6, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // Draw little cyan lightning bolt sticking out of bottom of the cloud
+        this.ctx.strokeStyle = '#00f0ff';
+        this.ctx.lineWidth = 1.8;
+        this.ctx.beginPath();
+        this.ctx.moveTo(1, 2);
+        this.ctx.lineTo(-3, 8);
+        this.ctx.lineTo(2, 8);
+        this.ctx.lineTo(-1, 14);
         this.ctx.stroke();
       }
       
@@ -1879,6 +2038,53 @@ class GameEngine {
       }
       this.ctx.restore();
     });
+
+    // 7.5 Draw Storm Rainy Day Overlay, Raindrops, and Lightning Bolts
+    if (this.rainTimer > 0) {
+      this.ctx.save();
+      // Calculate smooth fade-in and fade-out (3 seconds fade duration)
+      const fadeVal = Math.min(1.0, this.rainTimer / 3.0) * (this.rainTimer > 27.0 ? (30.0 - this.rainTimer) / 3.0 : 1.0);
+      
+      // Stormy dark grey background sky tint
+      this.ctx.fillStyle = `rgba(30, 41, 59, ${0.45 * fadeVal})`;
+      this.ctx.fillRect(0, 0, this.virtualWidth, this.virtualHeight);
+      
+      // Draw Raindrops
+      this.ctx.strokeStyle = `rgba(186, 230, 253, ${0.45 * fadeVal})`;
+      this.ctx.lineWidth = 1.5;
+      this.ctx.lineCap = 'round';
+      this.raindrops.forEach(drop => {
+        this.ctx.beginPath();
+        this.ctx.moveTo(drop.x, drop.y);
+        // Draw raindrop falling diagonally (using -4px X offset representing wind)
+        this.ctx.lineTo(drop.x - 4, drop.y + drop.length);
+        this.ctx.stroke();
+      });
+      this.ctx.restore();
+      
+      // Draw Lightning Bolt and screen flash
+      if (this.lightningFlash > 0 && this.currentLightningBolt) {
+        this.ctx.save();
+        // Screen flash
+        const flashOpacity = 0.35 * (this.lightningFlash / 0.22);
+        this.ctx.fillStyle = `rgba(255, 255, 255, ${flashOpacity})`;
+        this.ctx.fillRect(0, 0, this.virtualWidth, this.virtualHeight);
+        
+        // Lightning bolt line
+        this.ctx.strokeStyle = 'rgba(224, 242, 254, 0.95)';
+        this.ctx.lineWidth = 3.0;
+        this.ctx.shadowBlur = 25;
+        this.ctx.shadowColor = '#00f0ff';
+        
+        this.ctx.beginPath();
+        this.currentLightningBolt.forEach(seg => {
+          this.ctx.moveTo(seg.x1, seg.y1);
+          this.ctx.lineTo(seg.x2, seg.y2);
+        });
+        this.ctx.stroke();
+        this.ctx.restore();
+      }
+    }
 
     // 8. Draw Active Power-Up Indicators & Overlays
     let timerY = 95; // Starting Y coordinate below the HUD
