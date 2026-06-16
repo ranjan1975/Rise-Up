@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Sky Shield: Balloon Ascent</title>
+  <!-- Google Font Outfit for premium typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="game-container">
+    <!-- Game Canvas -->
+    <canvas id="game-canvas"></canvas>
+
+    <!-- HUD Overlay (Head-Up Display) -->
+    <div id="hud" class="overlay-ui hidden">
+      <div class="hud-item score-container">
+        <span class="hud-label">SCORE</span>
+        <span id="score-val" class="hud-value">0</span>
+      </div>
+      <div class="hud-item coin-container">
+        <span class="hud-label">COINS</span>
+        <span id="coin-val" class="hud-value">0</span>
+      </div>
+      <button id="pause-btn" class="btn-pause">
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+
+    <!-- Active Balloon Indicator Overlay (For Mobile Multi-Balloon) -->
+    <div id="active-indicator" class="overlay-ui hidden">
+      <span class="indicator-text">Active Balloon: <span id="active-balloon-name" style="color: #ff5252;">Red</span></span>
+    </div>
+
+    <!-- Glassmorphic Start Screen -->
+    <div id="start-screen" class="screen-overlay">
+      <div class="glass-card">
+        <h1 class="game-title">SKY SHIELD</h1>
+        <h2 class="game-subtitle">Balloon Ascent</h2>
+        
+        <div class="instructions">
+          <h3>HOW TO PLAY</h3>
+          <p>🎈 Protect the balloon from falling poop, debris, and asteroids!</p>
+          <p>💰 Collect falling coin bags to score points.</p>
+          <p>⚡ Reach <strong>300 coins</strong> to enter <strong>Night Mode</strong>.</p>
+          <div class="controls-guide">
+            <div class="guide-item">
+              <span class="key">▲ ▼ ◀ ▶</span> Move Balloon
+            </div>
+            <div class="guide-item">
+              <span class="key">Spacebar</span> Swap Balloons (Level 2+)
+            </div>
+          </div>
+        </div>
+        
+        <button id="start-btn" class="btn btn-primary">Ascend Now</button>
+      </div>
+    </div>
+
+    <!-- Glassmorphic Game Over Screen -->
+    <div id="game-over-screen" class="screen-overlay hidden">
+      <div class="glass-card">
+        <h2 class="screen-title text-danger">BALLOON POPPED!</h2>
+        
+        <div class="stats-grid">
+          <div class="stat-box">
+            <span class="stat-label">Final Score</span>
+            <span id="final-score" class="stat-val">0</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">Coins Collected</span>
+            <span id="final-coins" class="stat-val">0</span>
+          </div>
+        </div>
+
+        <div class="high-score-container">
+          <span>🏆 HIGH SCORE: <strong id="high-score-val">0</strong></span>
+        </div>
+
+        <button id="restart-btn" class="btn btn-primary">Ascend Again</button>
+      </div>
+    </div>
+
+    <!-- Glassmorphic Pause Screen -->
+    <div id="pause-screen" class="screen-overlay hidden">
+      <div class="glass-card">
+        <h2 class="screen-title">GAME PAUSED</h2>
+        
+        <div style="margin-bottom: 30px; font-size: 14px; opacity: 0.85;">
+          Balloons are suspended in mid-air.
+        </div>
+
+        <button id="resume-btn" class="btn btn-primary" style="margin-bottom: 14px;">Resume Game</button>
+        <button id="pause-restart-btn" class="btn" style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: white;">Restart Game</button>
+      </div>
+    </div>
+
+    <!-- Mobile Touch Controls Overlay (Hidden on desktop) -->
+    <div id="mobile-controls" class="overlay-ui hidden">
+      <!-- Joystick Zone (Left side) -->
+      <div id="joystick-container">
+        <div id="joystick-base">
+          <div id="joystick-handle"></div>
+        </div>
+      </div>
+
+      <!-- Action Button Zone (Right side) -->
+      <div id="action-container">
+        <button id="mobile-swap-btn" class="btn-swap">SWAP</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="sound.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

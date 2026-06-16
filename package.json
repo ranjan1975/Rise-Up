@@ -1,0 +1,17 @@
+{
+  "name": "rise-up-balloon",
+  "version": "1.0.0",
+  "description": "Sky Shield: Balloon Ascent Game",
+  "main": "index.html",
+  "scripts": {
+    "cap:sync": "npx cap sync",
+    "cap:open": "npx cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "4.8.2",
+    "@capacitor/ios": "4.8.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "4.8.2"
+  }
+}

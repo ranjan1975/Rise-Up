@@ -1,0 +1,521 @@
+/* CSS Variable System for dynamic Day/Night theme styling */
+:root {
+  --font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  /* Day Theme Palette */
+  --day-bg-gradient: linear-gradient(to top, #e0f2fe, #bae6fd, #7dd3fc);
+  --day-text: #0c4a6e;
+  --day-glass-bg: rgba(255, 255, 255, 0.45);
+  --day-glass-border: rgba(255, 255, 255, 0.5);
+  --day-accent: #ff5252;
+  
+  /* Night Theme Palette */
+  --night-bg-gradient: linear-gradient(to top, #020617, #0f172a, #1e1b4b);
+  --night-text: #f8fafc;
+  --night-glass-bg: rgba(15, 23, 42, 0.5);
+  --night-glass-border: rgba(255, 255, 255, 0.15);
+  --night-accent: #00f0ff;
+  
+  /* UI Glows and Shadows */
+  --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 10px 10px -5px rgba(0, 0, 0, 0.15);
+  --glass-blur: blur(16px);
+  --transition-speed: 0.8s; /* Smooth sunset/night transition */
+}
+
+/* Reset and Core Layout */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+body {
+  font-family: var(--font-family);
+  background: #090d16;
+  color: var(--day-text);
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: color var(--transition-speed) ease;
+}
+
+body.night-mode {
+  color: var(--night-text);
+}
+
+/* Fixed Aspect Ratio Game Container (9:16 vertical scroll orientation) */
+#game-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-width: 450px; /* Perfect smartphone aspect ratio on desktop */
+  max-height: 850px;
+  background: var(--day-bg-gradient);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  transition: background var(--transition-speed) cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#game-container.night-mode {
+  background: var(--night-bg-gradient);
+  box-shadow: 0 0 50px rgba(0, 240, 255, 0.15);
+}
+
+/* Canvas styling */
+#game-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* General overlay style for absolute overlays */
+.overlay-ui {
+  position: absolute;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.hidden {
+  display: none !important;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Head-Up Display (HUD) */
+#hud {
+  top: 20px;
+  left: 20px;
+  right: 20px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.hud-item {
+  background: var(--day-glass-bg);
+  border: 1px solid var(--day-glass-border);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  padding: 10px 16px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.3s ease;
+}
+
+#game-container.night-mode .hud-item {
+  background: var(--night-glass-bg);
+  border-color: var(--night-glass-border);
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.1);
+}
+
+.hud-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  opacity: 0.7;
+}
+
+.hud-value {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--day-text);
+  transition: color var(--transition-speed);
+}
+
+#game-container.night-mode .hud-value {
+  color: var(--night-accent);
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
+}
+
+/* Active Balloon Indicator Overlay */
+#active-indicator {
+  top: 85px;
+  left: 20px;
+  background: var(--day-glass-bg);
+  border: 1px solid var(--day-glass-border);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+#game-container.night-mode #active-indicator {
+  background: var(--night-glass-bg);
+  border-color: var(--night-glass-border);
+}
+
+/* Full Screen Overlay Screens (Start & Game Over) */
+.screen-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(9, 13, 22, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 20;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+  transition: opacity 0.5s ease;
+}
+
+/* Glassmorphic card style */
+.glass-card {
+  width: 100%;
+  max-width: 380px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-radius: 28px;
+  padding: 36px 28px;
+  text-align: center;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: cardEntrance 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+#game-container.night-mode .glass-card {
+  background: rgba(15, 23, 42, 0.6);
+  border-color: rgba(0, 240, 255, 0.2);
+}
+
+@keyframes cardEntrance {
+  from {
+    transform: scale(0.8) translateY(40px);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Typography & Titles */
+.game-title {
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  background: linear-gradient(135deg, #fff 30%, #ff8a8a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 4px;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.game-subtitle {
+  font-size: 16px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  color: #bae6fd;
+  margin-bottom: 24px;
+}
+
+.screen-title {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  margin-bottom: 20px;
+}
+
+.text-danger {
+  background: linear-gradient(135deg, #ff8a8a 0%, #ff3b30 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Instructions section */
+.instructions {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 16px 20px;
+  margin-bottom: 28px;
+  width: 100%;
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.instructions h3 {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  opacity: 0.5;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+
+.instructions p {
+  margin-bottom: 8px;
+}
+
+/* Controls Guide styling */
+.controls-guide {
+  margin-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.guide-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.key {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 2px 8px;
+  font-family: monospace;
+  font-weight: bold;
+}
+
+/* Buttons */
+.btn {
+  font-family: var(--font-family);
+  border: none;
+  outline: none;
+  padding: 14px 36px;
+  border-radius: 20px;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  width: 100%;
+  max-width: 240px;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.btn-primary {
+  background: #ff5252;
+  color: white;
+  box-shadow: 0 8px 16px rgba(255, 82, 82, 0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 12px 20px rgba(255, 82, 82, 0.4);
+}
+
+.btn-primary:active {
+  transform: translateY(-1px) scale(0.98);
+}
+
+#game-container.night-mode .btn-primary {
+  background: var(--night-accent);
+  color: #020617;
+  box-shadow: 0 8px 16px rgba(0, 240, 255, 0.3);
+}
+
+#game-container.night-mode .btn-primary:hover {
+  box-shadow: 0 12px 24px rgba(0, 240, 255, 0.5);
+}
+
+/* Stats Layout */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  width: 100%;
+  margin-bottom: 24px;
+}
+
+.stat-box {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.6;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.stat-val {
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.high-score-container {
+  font-size: 14px;
+  font-weight: 600;
+  opacity: 0.8;
+  margin-bottom: 28px;
+}
+
+/* Mobile Controls Overlay */
+#mobile-controls {
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 150px;
+  pointer-events: auto; /* Allow clicks on buttons/joysticks */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 30px;
+  z-index: 15;
+}
+
+/* Virtual Joystick styling */
+#joystick-container {
+  width: 100px;
+  height: 100px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#joystick-base {
+  width: 90px;
+  height: 90px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  position: relative;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  touch-action: none;
+}
+
+#joystick-handle {
+  width: 40px;
+  height: 40px;
+  background: #ff5252;
+  border-radius: 50%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: var(--shadow-sm);
+  transition: background 0.3s;
+}
+
+#game-container.night-mode #joystick-handle {
+  background: var(--night-accent);
+  box-shadow: 0 0 10px var(--night-accent);
+}
+
+/* Mobile Swap Button styling */
+#action-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.btn-swap {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 82, 82, 0.85);
+  color: white;
+  font-family: var(--font-family);
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  outline: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.btn-swap:active {
+  transform: scale(0.9);
+}
+
+#game-container.night-mode .btn-swap {
+  background: rgba(0, 240, 255, 0.85);
+  color: #020617;
+  border-color: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+}
+
+/* Custom styles for landscape orientation on small screens */
+@media (max-height: 500px) {
+  #game-container {
+    max-height: 100vh;
+    border-radius: 0;
+  }
+}
+
+/* Pause Button and Interface Styles */
+.btn-pause {
+  background: var(--day-glass-bg);
+  border: 1px solid var(--day-glass-border);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-radius: 16px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  pointer-events: auto; /* Allow clicks */
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  outline: none;
+  padding: 0;
+}
+
+#game-container.night-mode .btn-pause {
+  background: var(--night-glass-bg);
+  border-color: var(--night-glass-border);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.1);
+}
+
+.btn-pause span {
+  width: 4px;
+  height: 16px;
+  background: var(--day-text);
+  border-radius: 2px;
+  transition: background var(--transition-speed);
+}
+
+#game-container.night-mode .btn-pause span {
+  background: var(--night-accent);
+}
+
+.btn-pause:hover {
+  transform: scale(1.08);
+}
+
+.btn-pause:active {
+  transform: scale(0.92);
+}

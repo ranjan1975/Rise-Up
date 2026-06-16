@@ -1,0 +1,6 @@
+{
+  "appId": "com.antigravity.riseup",
+  "appName": "Rise Up",
+  "webDir": ".",
+  "bundledWebRuntime": false
+}
