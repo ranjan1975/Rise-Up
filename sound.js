@@ -16,7 +16,7 @@ class SoundManager {
     this.dayPath = 'Balloon Drift.mp3';
     this.nightPath = 'Moonlit Balloon Loop.mp3';
     this.ufoPath = 'UFO Descent.mp3';
-    this.rainPath = 'Rain Heavy Thunder.mp3';
+    this.rainPath = 'Thunder Clap.mp3';
     this.birdPaths = ['Bird1.mp3', 'Bird2.mp3', 'Bird3.mp3'];
     
     this.audioDay = null;
