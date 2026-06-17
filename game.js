@@ -185,7 +185,7 @@ class GameEngine {
 
     // 1. Tab switching logic
     this.shopTabs.forEach(tab => {
-      tab.addEventListener('click', (e) => {
+      tab.addEventListener('pointerdown', (e) => {
         e.stopPropagation();
         this.shopTabs.forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
@@ -203,7 +203,7 @@ class GameEngine {
 
     // 2. Item purchase/equip logic
     this.shopItemBtns.forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('pointerdown', (e) => {
         e.stopPropagation();
         const itemId = btn.dataset.id;
         let category = 'skins';
