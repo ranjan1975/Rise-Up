@@ -369,8 +369,25 @@ class GameEngine {
         // Play purchase success sound
         window.audioManager.playPowerUpCollect();
       } else {
-        // Can't afford, play warning
+        // Can't afford, play warning sound
         window.audioManager.playUFOWarning();
+
+        // Visual feedback: flash coins counter red and shake the container
+        const coinsDisplay = document.querySelector('.shop-coins-display');
+        const coinsVal = document.getElementById('shop-coins-val');
+        if (coinsDisplay && coinsVal) {
+          // Reset any existing animation
+          coinsDisplay.classList.remove('shake-animation');
+          void coinsDisplay.offsetWidth; // Trigger reflow to restart animation
+          coinsDisplay.classList.add('shake-animation');
+          
+          coinsVal.classList.add('flash-red');
+          
+          setTimeout(() => {
+            coinsDisplay.classList.remove('shake-animation');
+            coinsVal.classList.remove('flash-red');
+          }, 450);
+        }
       }
     }
 

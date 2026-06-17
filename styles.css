@@ -984,3 +984,21 @@ body.night-mode {
   background: rgba(167, 243, 208, 0.15);
 }
 
+/* Shake and Flash Red animation for locked shop item feedback */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+
+.shake-animation {
+  animation: shake 0.4s ease-in-out;
+}
+
+.flash-red {
+  color: #ff5252 !important;
+  text-shadow: 0 0 10px rgba(255, 82, 82, 0.8) !important;
+  transition: color 0.15s ease;
+}
+
+
