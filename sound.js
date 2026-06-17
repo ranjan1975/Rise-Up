@@ -18,6 +18,7 @@ class SoundManager {
     this.thunderPath = 'Thunder Clap.mp3';
     this.birdPaths = ['Bird1.mp3', 'Bird2.mp3', 'Bird3.mp3'];
     this.celebrationPath = 'BIG SCORE.wav';
+    this.advancedPath = 'Haunted Panic Loop.mp3';
     
     this.audioDay = null;
     this.audioNight = null;
@@ -25,9 +26,11 @@ class SoundManager {
     this.audioThunder = null;
     this.audioBirds = [];
     this.audioCelebration = null;
+    this.audioAdvanced = null;
     this.currentAudio = null;
     this.isTurboActive = false;
     this.isCelebrationActive = false;
+    this.isAdvancedActive = false;
   }
 
   // Initialize Audio Context on first user interaction (browser security requirement)
@@ -113,6 +116,24 @@ class SoundManager {
       unlock();
     }
     
+    if (!this.audioAdvanced) {
+      this.audioAdvanced = new Audio(this.advancedPath);
+      this.audioAdvanced.preload = 'auto';
+      this.audioAdvanced.loop = true;
+      this.audioAdvanced.volume = 0.15;
+      
+      // Mobile Autoplay unlock
+      const unlock = () => {
+        this.audioAdvanced.play().then(() => {
+          this.audioAdvanced.pause();
+          this.audioAdvanced.currentTime = 0;
+        }).catch(err => {
+          console.warn("Mobile unlock skipped/blocked for:", this.advancedPath, err);
+        });
+      };
+      unlock();
+    }
+    
     this.updateVolumes();
   }
 
@@ -154,6 +175,9 @@ class SoundManager {
     }
     if (this.audioCelebration) {
       this.audioCelebration.volume = this.isMuted ? 0 : 0.35;
+    }
+    if (this.audioAdvanced) {
+      this.audioAdvanced.volume = this.isMuted ? 0 : 0.15;
     }
   }
 
@@ -522,6 +546,8 @@ class SoundManager {
     let targetAudio = this.audioDay;
     if (this.isCelebrationActive) {
       targetAudio = this.audioCelebration;
+    } else if (this.isAdvancedActive) {
+      targetAudio = this.audioAdvanced;
     } else if (this.isUfoActive) {
       targetAudio = this.audioUfo;
     } else if (this.isNightMode) {
@@ -588,6 +614,13 @@ class SoundManager {
 
   setCelebrationMode(active) {
     this.isCelebrationActive = active;
+    if (this.isMusicPlaying) {
+      this.playCurrentBgm();
+    }
+  }
+
+  setAdvancedMode(active) {
+    this.isAdvancedActive = active;
     if (this.isMusicPlaying) {
       this.playCurrentBgm();
     }

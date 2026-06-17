@@ -581,6 +581,7 @@ class GameEngine {
     window.audioManager.setRainMode(false);
     window.audioManager.setTurboMode(false);
     window.audioManager.setCelebrationMode(false);
+    window.audioManager.setAdvancedMode(false);
     window.audioManager.startMusic();
     this.pauseBtn.classList.remove('hidden-control');
     
@@ -1003,6 +1004,8 @@ class GameEngine {
       if (!this.isAdvancedMode) {
         this.isAdvancedMode = true;
         document.getElementById('game-container').classList.add('advanced-mode');
+        // Play advanced level music
+        window.audioManager.setAdvancedMode(true);
         // Clear existing hazards and birds to start fresh
         this.hazards = [];
         this.birds = [];
@@ -1010,6 +1013,8 @@ class GameEngine {
     } else if (this.isAdvancedMode && this.score >= 18000) {
       this.isAdvancedMode = false;
       document.getElementById('game-container').classList.remove('advanced-mode');
+      // Stop advanced level music
+      window.audioManager.setAdvancedMode(false);
       // Revert back to default mode (day mode)
       this.revertToDayMode();
       // Clear advanced hazards
