@@ -122,6 +122,8 @@ class GameEngine {
     this.trailParticles = [];
     this.trailSpawnTimer = 0;
     this.turboTimer = 0;
+    this.hasTriggeredCelebration = false;
+    this.celebrationTimer = 0;
     
     this.isShopOpen = false;
     this.initShop();
@@ -592,6 +594,8 @@ class GameEngine {
     this.freezeTimer = 0;
     this.autopilotTimer = 0;
     this.turboTimer = 0;
+    this.hasTriggeredCelebration = false;
+    this.celebrationTimer = 0;
     this.lastAutopilotScore = 0;
     this.rainTimer = 0;
     this.rainbowTimer = 0;
@@ -831,6 +835,70 @@ class GameEngine {
         this.confirmGiveUp();
       }
       return;
+    }
+
+    if (this.state === 'CELEBRATION') {
+      const targetX = this.virtualWidth / 2;
+      const targetY = this.virtualHeight / 2;
+      
+      // Update birds carousel orbit
+      this.birds.forEach(bird => {
+        bird.orbitAngle = (bird.orbitAngle || 0) + (bird.orbitSpeed || 2.0) * dt;
+        bird.x = targetX + Math.cos(bird.orbitAngle) * bird.orbitRadius;
+        bird.y = targetY + Math.sin(bird.orbitAngle) * bird.orbitRadius;
+        bird.elapsedTime += dt;
+        bird.direction = -Math.sin(bird.orbitAngle) >= 0 ? 1 : -1;
+      });
+      
+      // Interpolate active balloon position and size to 3x center
+      const activeBalloon = this.balloons[this.activeBalloonIdx];
+      if (activeBalloon && activeBalloon.alive) {
+        activeBalloon.x += (targetX - activeBalloon.x) * 0.08;
+        activeBalloon.y += (targetY - activeBalloon.y) * 0.08;
+        activeBalloon.radius += (26 * 3 - activeBalloon.radius) * 0.08;
+      }
+      
+      this.celebrationTimer -= dt;
+      if (this.celebrationTimer <= 0) {
+        this.state = 'PLAYING';
+        this.birds = []; // Clear celebration birds
+        if (activeBalloon) {
+          activeBalloon.radius = 26; // Reset size back to normal
+        }
+      }
+      return;
+    }
+
+    // Trigger Celebration cutscene on score 2000
+    if (this.score >= 2000 && !this.hasTriggeredCelebration) {
+      this.hasTriggeredCelebration = true;
+      this.state = 'CELEBRATION';
+      this.celebrationTimer = 10.0;
+      this.hazards = [];
+      this.coinBags = [];
+      this.powerUps = [];
+      this.birds = [];
+      
+      const targetX = this.virtualWidth / 2;
+      const targetY = this.virtualHeight / 2;
+      
+      // Spawn 6 celebrating orbiting birds
+      for (let i = 0; i < 6; i++) {
+        const angle = (i * Math.PI * 2) / 6;
+        this.birds.push({
+          orbitAngle: angle,
+          orbitRadius: 130 + Math.random() * 25, // concentric orbits
+          orbitSpeed: 1.8 + Math.random() * 0.5,
+          x: targetX + Math.cos(angle) * 140,
+          y: targetY + Math.sin(angle) * 140,
+          vx: 0,
+          vy: 0,
+          direction: -Math.sin(angle) >= 0 ? 1 : -1,
+          elapsedTime: Math.random() * Math.PI,
+          dropX: -100, // disable dropping poop
+          hasPooped: true
+        });
+      }
     }
 
     // Decrement power-up active timers
@@ -2485,6 +2553,39 @@ class GameEngine {
       this.ctx.save();
       this.ctx.translate(balloon.x, balloon.y);
       
+      // Draw Sun Rays and Soft Halo in CELEBRATION state
+      if (this.state === 'CELEBRATION') {
+        this.ctx.save();
+        const haloGrad = this.ctx.createRadialGradient(0, 0, balloon.radius * 0.2, 0, 0, balloon.radius * 2.8);
+        haloGrad.addColorStop(0, 'rgba(255, 235, 59, 0.6)');
+        haloGrad.addColorStop(0.3, 'rgba(255, 215, 0, 0.35)');
+        haloGrad.addColorStop(1, 'rgba(255, 215, 0, 0.0)');
+        this.ctx.fillStyle = haloGrad;
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, balloon.radius * 2.8, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // Draw rotating sun rays oozing out of the balloon
+        const numRays = 12;
+        const maxRayLen = balloon.radius * 2.5;
+        const angleStep = (Math.PI * 2) / numRays;
+        const currentRotate = (performance.now() / 1500) % (Math.PI * 2);
+        
+        this.ctx.strokeStyle = 'rgba(255, 235, 59, 0.45)';
+        this.ctx.lineWidth = balloon.radius * 0.05;
+        this.ctx.lineCap = 'round';
+        
+        for (let i = 0; i < numRays; i++) {
+          const rayAngle = i * angleStep + currentRotate;
+          const startRadius = balloon.radius * 0.9;
+          this.ctx.beginPath();
+          this.ctx.moveTo(Math.cos(rayAngle) * startRadius, Math.sin(rayAngle) * startRadius);
+          this.ctx.lineTo(Math.cos(rayAngle) * maxRayLen, Math.sin(rayAngle) * maxRayLen);
+          this.ctx.stroke();
+        }
+        this.ctx.restore();
+      }
+      
       // Apply neon glowing effects in Night Mode (or override shadow if custom skin)
       if (this.isNightMode) {
         this.ctx.shadowBlur = 18;
@@ -2492,7 +2593,13 @@ class GameEngine {
       }
       
       // Determine balloon body fill style
-      if (this.equippedSkin === 'skin_gold') {
+      if (this.state === 'CELEBRATION') {
+        const grad = this.ctx.createRadialGradient(-balloon.radius * 0.3, -balloon.radius * 0.3, balloon.radius * 0.1, 0, 0, balloon.radius);
+        grad.addColorStop(0, '#fff7c2');
+        grad.addColorStop(0.4, '#ffd700');
+        grad.addColorStop(1, '#b59310');
+        this.ctx.fillStyle = grad;
+      } else if (this.equippedSkin === 'skin_gold') {
         const grad = this.ctx.createRadialGradient(-balloon.radius * 0.3, -balloon.radius * 0.3, balloon.radius * 0.1, 0, 0, balloon.radius);
         grad.addColorStop(0, '#fff7c2');
         grad.addColorStop(0.4, '#ffd700');
@@ -2574,11 +2681,11 @@ class GameEngine {
       }
 
       // Draw Balloon Squeezed base tie (triangle at bottom)
-      this.ctx.fillStyle = this.equippedSkin === 'skin_gold' ? '#ffd700' : (this.equippedSkin === 'skin_steam' ? '#64748b' : (this.equippedSkin === 'skin_cyber' ? 'rgba(15, 23, 42, 0.95)' : balloon.color));
+      this.ctx.fillStyle = (this.equippedSkin === 'skin_gold' || this.state === 'CELEBRATION') ? '#ffd700' : (this.equippedSkin === 'skin_steam' ? '#64748b' : (this.equippedSkin === 'skin_cyber' ? 'rgba(15, 23, 42, 0.95)' : balloon.color));
       this.ctx.beginPath();
       this.ctx.moveTo(0, balloon.radius - 2);
-      this.ctx.lineTo(-6, balloon.radius + 6);
-      this.ctx.lineTo(6, balloon.radius + 6);
+      this.ctx.lineTo(-balloon.radius * 0.23, balloon.radius + balloon.radius * 0.23);
+      this.ctx.lineTo(balloon.radius * 0.23, balloon.radius + balloon.radius * 0.23);
       this.ctx.closePath();
       this.ctx.fill();
       if (this.equippedSkin === 'skin_cyber') {
@@ -2588,27 +2695,28 @@ class GameEngine {
       }
 
       // Draw details for custom skins
-      if (this.equippedSkin === 'skin_gold') {
+      if (this.equippedSkin === 'skin_gold' || this.state === 'CELEBRATION') {
         // Draw Gold Crown
         const cy = -balloon.radius * 1.25;
+        const r = balloon.radius;
         this.ctx.fillStyle = '#ffd700';
         this.ctx.strokeStyle = '#b59310';
-        this.ctx.lineWidth = 1.2;
+        this.ctx.lineWidth = r * 0.05;
         this.ctx.beginPath();
-        this.ctx.moveTo(-10, cy);
-        this.ctx.lineTo(-12, cy - 8);
-        this.ctx.lineTo(-5, cy - 3);
-        this.ctx.lineTo(0, cy - 10);
-        this.ctx.lineTo(5, cy - 3);
-        this.ctx.lineTo(12, cy - 8);
-        this.ctx.lineTo(10, cy);
+        this.ctx.moveTo(-r * 0.38, cy);
+        this.ctx.lineTo(-r * 0.46, cy - r * 0.31);
+        this.ctx.lineTo(-r * 0.19, cy - r * 0.12);
+        this.ctx.lineTo(0, cy - r * 0.38);
+        this.ctx.lineTo(r * 0.19, cy - r * 0.12);
+        this.ctx.lineTo(r * 0.46, cy - r * 0.31);
+        this.ctx.lineTo(r * 0.38, cy);
         this.ctx.closePath();
         this.ctx.fill();
         this.ctx.stroke();
         
         this.ctx.fillStyle = '#ff3b30'; // Gem
         this.ctx.beginPath();
-        this.ctx.arc(0, cy - 3, 2, 0, Math.PI * 2);
+        this.ctx.arc(0, cy - r * 0.12, r * 0.08, 0, Math.PI * 2);
         this.ctx.fill();
       } else if (this.equippedSkin === 'skin_steam') {
         // Draw copper rivets
