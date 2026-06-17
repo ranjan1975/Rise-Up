@@ -636,3 +636,289 @@ body.night-mode {
   }
 }
 
+/* ==========================================================================
+   Balloon Shop Sidebar & Customization Styles
+   ========================================================================== */
+
+/* Make start and game over screens two-column to accommodate shop on the right */
+#start-screen, #game-over-screen {
+  justify-content: flex-start;
+  padding: 20px 15px;
+}
+
+#start-screen .glass-card, #game-over-screen .glass-card {
+  max-width: 255px;
+  padding: 24px 16px;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+}
+
+#start-screen .instructions {
+  margin-top: 10px;
+  margin-bottom: 15px;
+  font-size: 11px;
+}
+
+#start-screen .instructions h3 {
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+#start-screen .instructions p {
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+#start-screen .controls-guide {
+  margin-top: 8px;
+  gap: 4px;
+}
+
+#start-screen .guide-item {
+  font-size: 10px;
+}
+
+#start-screen .btn-primary {
+  padding: 12px 20px;
+  font-size: 14px;
+}
+
+/* Shop Sidebar Container */
+.shop-overlay {
+  position: absolute;
+  top: 95px;
+  right: 15px;
+  width: 145px;
+  bottom: 80px;
+  z-index: 25;
+  pointer-events: auto;
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
+}
+
+.shop-overlay.hidden {
+  display: none !important;
+}
+
+.shop-card {
+  height: 100%;
+  background: var(--day-glass-bg);
+  border: 1px solid var(--day-glass-border);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-radius: 20px;
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+#game-container.night-mode .shop-card {
+  background: var(--night-glass-bg);
+  border-color: var(--night-glass-border);
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.15);
+}
+
+.shop-title {
+  font-size: 14px;
+  font-weight: 800;
+  text-align: center;
+  color: var(--day-text);
+  margin-bottom: 10px;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+#game-container.night-mode .shop-title {
+  color: var(--night-accent);
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.45);
+}
+
+/* Category Tabs navigation */
+.shop-tabs {
+  display: flex;
+  gap: 3px;
+  margin-bottom: 10px;
+  justify-content: space-between;
+}
+
+.shop-tab {
+  flex: 1;
+  font-family: var(--font-family);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 6px 0;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--day-text);
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+#game-container.night-mode .shop-tab {
+  color: var(--night-text);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.shop-tab.active {
+  background: #ff5252;
+  color: white;
+  border-color: #ff5252;
+  box-shadow: 0 2px 6px rgba(255, 82, 82, 0.3);
+}
+
+#game-container.night-mode .shop-tab.active {
+  background: var(--night-accent);
+  color: #020617;
+  border-color: var(--night-accent);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
+}
+
+/* Items Scroll Area */
+.shop-items-container {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.shop-items-container::-webkit-scrollbar {
+  width: 4px;
+}
+
+.shop-items-container::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+
+.shop-category-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px 0;
+  transition: opacity 0.2s;
+}
+
+.shop-category-list.hidden {
+  display: none !important;
+}
+
+/* Individual Item Button */
+.shop-item-btn {
+  font-family: var(--font-family);
+  border: 1px solid var(--day-glass-border);
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 8px 4px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  outline: none;
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+#game-container.night-mode .shop-item-btn {
+  border-color: var(--night-glass-border);
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.shop-item-btn:hover {
+  transform: translateY(-2px) scale(1.02);
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+}
+
+#game-container.night-mode .shop-item-btn:hover {
+  background: rgba(15, 23, 42, 0.55);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.15);
+}
+
+.item-emoji {
+  font-size: 22px;
+}
+
+.item-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--day-text);
+  text-align: center;
+}
+
+#game-container.night-mode .item-name {
+  color: var(--night-text);
+}
+
+.item-status {
+  font-size: 9px;
+  font-weight: 800;
+  color: #ff5252;
+  background: rgba(255, 82, 82, 0.12);
+  padding: 3px 6px;
+  border-radius: 8px;
+  text-transform: uppercase;
+  width: 90%;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+#game-container.night-mode .item-status {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.12);
+}
+
+/* Equipped/Active State */
+.shop-item-btn.active {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.15);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.2) inset;
+}
+
+.shop-item-btn.active .item-status {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.18);
+}
+
+#game-container.night-mode .shop-item-btn.active {
+  border-color: #00f0ff;
+  background: rgba(0, 240, 255, 0.12);
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.2) inset;
+}
+
+#game-container.night-mode .shop-item-btn.active .item-status {
+  color: #00f0ff;
+  background: rgba(0, 240, 255, 0.18);
+}
+
+/* Insufficient Coins / Locked State */
+.shop-item-btn.disabled-buy {
+  opacity: 0.6;
+}
+
+.shop-item-btn.disabled-buy .item-status {
+  background: rgba(100, 116, 139, 0.12) !important;
+  color: #64748b !important;
+}
+
+/* Unlocked but not Equipped State */
+.shop-item-btn.owned-buy {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.shop-item-btn.owned-buy .item-status {
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.15);
+}
+
+#game-container.night-mode .shop-item-btn.owned-buy .item-status {
+  color: #a7f3d0;
+  background: rgba(167, 243, 208, 0.15);
+}
+

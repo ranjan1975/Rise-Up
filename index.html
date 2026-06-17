@@ -71,6 +71,98 @@
       </div>
     </div>
 
+    <!-- Balloon Shop Sidebar (Visible on Start Menu) -->
+    <div id="shop-sidebar" class="shop-overlay">
+      <div class="shop-card">
+        <div class="shop-title">🛍️ SHOP</div>
+        <div class="shop-coins-display" style="font-size: 12px; font-weight: 800; text-align: center; color: #ffeb3b; margin-bottom: 8px;">🪙 <span id="shop-coins-val">0</span></div>
+        <div class="shop-tabs">
+          <button class="shop-tab active" data-category="skins">Skins</button>
+          <button class="shop-tab" data-category="trails">Trails</button>
+          <button class="shop-tab" data-category="decos">Decos</button>
+        </div>
+        
+        <div class="shop-items-container">
+          <!-- Skins Category -->
+          <div class="shop-category-list" id="category-skins">
+            <button class="shop-item-btn active" id="item-skin-default" data-id="default">
+              <span class="item-emoji">🎈</span>
+              <span class="item-name">Default</span>
+              <span class="item-status">Equipped</span>
+            </button>
+            <button class="shop-item-btn" id="item-skin-gold" data-id="skin_gold">
+              <span class="item-emoji">👑</span>
+              <span class="item-name">Royale</span>
+              <span class="item-status">1000 🪙</span>
+            </button>
+            <button class="shop-item-btn" id="item-skin-steam" data-id="skin_steam">
+              <span class="item-emoji">⚙️</span>
+              <span class="item-name">Ironclad</span>
+              <span class="item-status">600 🪙</span>
+            </button>
+            <button class="shop-item-btn" id="item-skin-cyber" data-id="skin_cyber">
+              <span class="item-emoji">🌐</span>
+              <span class="item-name">Cyber</span>
+              <span class="item-status">800 🪙</span>
+            </button>
+            <button class="shop-item-btn" id="item-skin-kitty" data-id="skin_kitty">
+              <span class="item-emoji">🐱</span>
+              <span class="item-name">Kitty</span>
+              <span class="item-status">500 🪙</span>
+            </button>
+          </div>
+          
+          <!-- Trails Category -->
+          <div class="shop-category-list hidden" id="category-trails">
+            <button class="shop-item-btn active" id="item-trail-none" data-id="none">
+              <span class="item-emoji">❌</span>
+              <span class="item-name">No Trail</span>
+              <span class="item-status">Equipped</span>
+            </button>
+            <button class="shop-item-btn" id="item-trail-rainbow" data-id="trail_rainbow">
+              <span class="item-emoji">🌈</span>
+              <span class="item-name">Rainbow</span>
+              <span class="item-status">400 🪙</span>
+            </button>
+            <button class="shop-item-btn" id="item-trail-stars" data-id="trail_stars">
+              <span class="item-emoji">⭐</span>
+              <span class="item-name">Stars</span>
+              <span class="item-status">300 🪙</span>
+            </button>
+            <button class="shop-item-btn" id="item-trail-rocket" data-id="trail_rocket">
+              <span class="item-emoji">🚀</span>
+              <span class="item-name">Exhaust</span>
+              <span class="item-status">400 🪙</span>
+            </button>
+          </div>
+          
+          <!-- Decos Category -->
+          <div class="shop-category-list hidden" id="category-decos">
+            <button class="shop-item-btn active" id="item-attach-none" data-id="none">
+              <span class="item-emoji">❌</span>
+              <span class="item-name">No Deco</span>
+              <span class="item-status">Equipped</span>
+            </button>
+            <button class="shop-item-btn" id="item-attach-propeller" data-id="attach_propeller">
+              <span class="item-emoji">🚁</span>
+              <span class="item-name">Propeller</span>
+              <span class="item-status">350 🪙</span>
+            </button>
+            <button class="shop-item-btn" id="item-attach-tassel" data-id="attach_tassel">
+              <span class="item-emoji">🏮</span>
+              <span class="item-name">Tassel</span>
+              <span class="item-status">200 🪙</span>
+            </button>
+            <button class="shop-item-btn" id="item-attach-ring" data-id="attach_ring">
+              <span class="item-emoji">🪐</span>
+              <span class="item-name">Orbit Ring</span>
+              <span class="item-status">500 🪙</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Glassmorphic Game Over Screen -->
     <div id="game-over-screen" class="screen-overlay hidden">
       <div class="glass-card">
@@ -147,7 +239,7 @@
   </div>
 
   <!-- Scripts -->
-  <script src="sound.js?v=9"></script>
-  <script src="game.js?v=9"></script>
+  <script src="sound.js?v=12"></script>
+  <script src="game.js?v=12"></script>
 </body>
 </html>

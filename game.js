@@ -80,6 +80,7 @@ class GameEngine {
     this.ufoWarningSirenTimer = 0;
     this.powerUpSpawnTimer = 0;
     this.powerUpQueue = [];
+    this.isLoopRunning = false;
     
     // Game Settings & Tuning
     this.scrollSpeed = 120; // Px per second
@@ -104,6 +105,24 @@ class GameEngine {
     
     // High Score display
     this.highScoreVal.innerText = this.highScore;
+
+    // Balloon Shop UI bindings & data initialization
+    this.shopSidebar = document.getElementById('shop-sidebar');
+    this.shopCoinsVal = document.getElementById('shop-coins-val');
+    this.shopTabs = document.querySelectorAll('.shop-tab');
+    this.shopItemBtns = document.querySelectorAll('.shop-item-btn');
+    this.shopCategoryLists = document.querySelectorAll('.shop-category-list');
+    
+    this.totalCoins = parseInt(localStorage.getItem('sky_shield_total_coins') || '0');
+    this.ownedItems = JSON.parse(localStorage.getItem('sky_shield_owned_items') || '["default", "none"]');
+    this.equippedSkin = localStorage.getItem('sky_shield_equipped_skin') || 'default';
+    this.equippedTrail = localStorage.getItem('sky_shield_equipped_trail') || 'none';
+    this.equippedAttachment = localStorage.getItem('sky_shield_equipped_attach') || 'none';
+    
+    this.trailParticles = [];
+    this.trailSpawnTimer = 0;
+    
+    this.initShop();
   }
 
   pauseGame() {
@@ -129,6 +148,10 @@ class GameEngine {
     }
     this.pauseBtn.classList.remove('hidden-control');
     this.lastTime = performance.now(); // Reset lastTime to prevent dt jump
+    if (!this.isLoopRunning) {
+      this.isLoopRunning = true;
+      requestAnimationFrame((t) => this.loop(t));
+    }
   }
 
   updateMuteIcon(isMuted) {
@@ -147,6 +170,169 @@ class GameEngine {
         <path id="sound-waves" d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
       `;
     }
+  }
+
+  // Initialize shop functionality and DOM bindings
+  initShop() {
+    if (!this.shopSidebar) return;
+
+    // 1. Tab switching logic
+    this.shopTabs.forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.shopTabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        
+        const category = tab.dataset.category;
+        this.shopCategoryLists.forEach(list => {
+          if (list.id === `category-${category}`) {
+            list.classList.remove('hidden');
+          } else {
+            list.classList.add('hidden');
+          }
+        });
+      });
+    });
+
+    // 2. Item purchase/equip logic
+    this.shopItemBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const itemId = btn.dataset.id;
+        let category = 'skins';
+        const parent = btn.parentElement;
+        if (parent) {
+          if (parent.id === 'category-trails') category = 'trails';
+          if (parent.id === 'category-decos') category = 'decos';
+        }
+        this.buyOrEquipItem(itemId, category);
+      });
+    });
+
+    this.updateShopUI();
+  }
+
+  // Update classes, text, and active states of shop item buttons
+  updateShopUI() {
+    if (!this.shopItemBtns) return;
+    
+    // Pricing configurations matching implementation plan
+    const prices = {
+      // Skins
+      'skin_gold': 1000,
+      'skin_steam': 600,
+      'skin_cyber': 800,
+      'skin_kitty': 500,
+      // Trails
+      'trail_rainbow': 400,
+      'trail_stars': 300,
+      'trail_rocket': 400,
+      // Attachments
+      'attach_propeller': 350,
+      'attach_tassel': 200,
+      'attach_ring': 500
+    };
+
+    this.shopItemBtns.forEach(btn => {
+      const itemId = btn.dataset.id;
+      const statusSpan = btn.querySelector('.item-status');
+      
+      // Reset classes
+      btn.classList.remove('active', 'owned-buy', 'disabled-buy');
+
+      // Check if equipped
+      const isEquipped = (this.equippedSkin === itemId || this.equippedTrail === itemId || this.equippedAttachment === itemId);
+      
+      if (isEquipped) {
+        btn.classList.add('active');
+        if (statusSpan) statusSpan.innerText = 'Equipped';
+      } else if (this.ownedItems.includes(itemId) || itemId === 'default' || itemId === 'none') {
+        btn.classList.add('owned-buy');
+        if (statusSpan) statusSpan.innerText = 'Equip';
+      } else {
+        // Unowned, show price
+        const price = prices[itemId] || 0;
+        if (statusSpan) statusSpan.innerText = `${price} 🪙`;
+        
+        if (this.totalCoins < price) {
+          btn.classList.add('disabled-buy');
+        }
+      }
+    });
+
+    // Also sync standard coin indicators
+    if (this.shopCoinsVal) {
+      this.shopCoinsVal.innerText = this.totalCoins;
+    }
+    if (this.coinVal) {
+      this.coinVal.innerText = this.coins;
+    }
+  }
+
+  // Business logic to buy or equip items
+  buyOrEquipItem(itemId, category) {
+    // Pricing configuration
+    const prices = {
+      'skin_gold': 1000,
+      'skin_steam': 600,
+      'skin_cyber': 800,
+      'skin_kitty': 500,
+      'trail_rainbow': 400,
+      'trail_stars': 300,
+      'trail_rocket': 400,
+      'attach_propeller': 350,
+      'attach_tassel': 200,
+      'attach_ring': 500
+    };
+
+    const isOwned = this.ownedItems.includes(itemId) || itemId === 'default' || itemId === 'none';
+
+    if (isOwned) {
+      // Equip the item
+      if (category === 'skins') {
+        this.equippedSkin = itemId;
+        localStorage.setItem('sky_shield_equipped_skin', this.equippedSkin);
+      } else if (category === 'trails') {
+        this.equippedTrail = itemId;
+        localStorage.setItem('sky_shield_equipped_trail', this.equippedTrail);
+      } else if (category === 'decos') {
+        this.equippedAttachment = itemId;
+        localStorage.setItem('sky_shield_equipped_attach', this.equippedAttachment);
+      }
+      
+      window.audioManager.playPowerUpCollect(); // Play equip sound
+    } else {
+      // Try to buy the item
+      const price = prices[itemId] || 0;
+      if (this.totalCoins >= price) {
+        this.totalCoins -= price;
+        this.ownedItems.push(itemId);
+        
+        // Save state
+        localStorage.setItem('sky_shield_total_coins', this.totalCoins.toString());
+        localStorage.setItem('sky_shield_owned_items', JSON.stringify(this.ownedItems));
+        
+        // Auto-equip upon purchase
+        if (category === 'skins') {
+          this.equippedSkin = itemId;
+          localStorage.setItem('sky_shield_equipped_skin', this.equippedSkin);
+        } else if (category === 'trails') {
+          this.equippedTrail = itemId;
+          localStorage.setItem('sky_shield_equipped_trail', this.equippedTrail);
+        } else if (category === 'decos') {
+          this.equippedAttachment = itemId;
+          localStorage.setItem('sky_shield_equipped_attach', this.equippedAttachment);
+        }
+        
+        // Play purchase success sound
+        window.audioManager.playPowerUpCollect();
+      } else {
+        // Can't afford, play warning
+        window.audioManager.playUFOWarning();
+      }
+    }
+
+    this.updateShopUI();
   }
 
   // Set up stars once for Night Mode
@@ -392,6 +578,9 @@ class GameEngine {
     if (this.lifeSaverScreen) {
       this.lifeSaverScreen.classList.add('hidden');
     }
+    if (this.shopSidebar) {
+      this.shopSidebar.classList.add('hidden');
+    }
     this.hud.classList.remove('hidden');
     
     if (this.isTouchDevice) {
@@ -403,7 +592,10 @@ class GameEngine {
     this.lastTime = performance.now();
     
     // Kickstart game animation loop
-    requestAnimationFrame((t) => this.loop(t));
+    if (!this.isLoopRunning) {
+      this.isLoopRunning = true;
+      requestAnimationFrame((t) => this.loop(t));
+    }
   }
 
   swapBalloons() {
@@ -523,12 +715,15 @@ class GameEngine {
 
   // Game Loop
   loop(time) {
-    if (this.state !== 'PLAYING' && this.state !== 'PAUSED') return;
+    if (this.state !== 'PLAYING' && this.state !== 'PAUSED' && this.state !== 'REVIVE_PROMPT') {
+      this.isLoopRunning = false;
+      return;
+    }
     
     const dt = (time - this.lastTime) / 1000;
     this.lastTime = time;
     
-    if (this.state === 'PLAYING') {
+    if (this.state === 'PLAYING' || this.state === 'REVIVE_PROMPT') {
       this.update(dt);
     }
     this.draw();
@@ -1034,6 +1229,72 @@ class GameEngine {
     });
     this.particles = this.particles.filter(p => p.alpha > 0);
 
+    // Update and spawn equipped cosmetic trail particles
+    if (this.equippedTrail !== 'none') {
+      this.trailSpawnTimer += dt;
+      if (this.trailSpawnTimer >= 0.05) {
+        this.trailSpawnTimer = 0;
+        this.balloons.forEach(balloon => {
+          if (!balloon.alive || balloon.popping) return;
+          
+          if (this.equippedTrail === 'trail_rainbow') {
+            const hue = (performance.now() / 15) % 360;
+            const color = `hsla(${hue}, 90%, 65%, 1.0)`;
+            this.particles.push({
+              type: 'sparkle',
+              x: balloon.x,
+              y: balloon.y + balloon.radius + 6,
+              vx: (Math.random() - 0.5) * 20,
+              vy: 70 + Math.random() * 30,
+              size: 5 + Math.random() * 4,
+              color: color,
+              alpha: 1.0,
+              decay: 1.4
+            });
+          } else if (this.equippedTrail === 'trail_stars') {
+            this.particles.push({
+              type: 'trail_star',
+              x: balloon.x + (Math.random() - 0.5) * 16,
+              y: balloon.y + balloon.radius + 8,
+              vx: (Math.random() - 0.5) * 15,
+              vy: 50 + Math.random() * 30,
+              size: 4 + Math.random() * 4,
+              color: '#ffeb3b',
+              alpha: 1.0,
+              decay: 1.2
+            });
+          } else if (this.equippedTrail === 'trail_rocket') {
+            // Hot orange fire spark
+            this.particles.push({
+              type: 'sparkle',
+              x: balloon.x,
+              y: balloon.y + balloon.radius + 6,
+              vx: (Math.random() - 0.5) * 28,
+              vy: 160 + Math.random() * 60,
+              size: 2 + Math.random() * 3,
+              color: Math.random() > 0.45 ? '#ff5252' : '#ffeb3b',
+              alpha: 1.0,
+              decay: 3.0
+            });
+            // Smoke puff
+            if (Math.random() > 0.35) {
+              this.particles.push({
+                type: 'smoke',
+                x: balloon.x + (Math.random() - 0.5) * 8,
+                y: balloon.y + balloon.radius + 10,
+                vx: (Math.random() - 0.5) * 10,
+                vy: 40 + Math.random() * 20,
+                size: 5 + Math.random() * 6,
+                color: this.isNightMode ? 'rgba(71, 85, 105, 0.45)' : 'rgba(203, 213, 225, 0.45)',
+                alpha: 0.8,
+                decay: 1.5
+              });
+            }
+          }
+        });
+      }
+    }
+
     // 6.5 Update UFO Boss
     if (this.ufo === null && !this.ufoWarningActive) {
       this.ufoTimer += envDt;
@@ -1372,16 +1633,26 @@ class GameEngine {
       localStorage.setItem('sky_shield_highscore', this.highScore.toString());
       this.highScoreVal.innerText = this.highScore;
     }
+
+    // Save collected coins to total purse
+    this.totalCoins += this.coins;
+    localStorage.setItem('sky_shield_total_coins', this.totalCoins.toString());
+    
+    // Update shop UI to reflect updated coins balance
+    this.updateShopUI();
     
     // Set UI Screen Stats
     this.finalScore.innerText = this.score;
     this.finalCoins.innerText = this.coins;
     
-    // Show GameOver Screen
+    // Show GameOver Screen and Shop
     this.hud.classList.add('hidden');
     this.mobileControls.classList.add('hidden');
     this.pauseBtn.classList.add('hidden-control');
     this.gameOverScreen.classList.remove('hidden');
+    if (this.shopSidebar) {
+      this.shopSidebar.classList.remove('hidden');
+    }
   }
 
   reviveGame() {
@@ -1390,6 +1661,9 @@ class GameEngine {
 
     // Deduct revive cost
     this.coins -= 300;
+    if (this.coinVal) {
+      this.coinVal.innerText = this.coins;
+    }
     
     // Reset balloons: revive active balloons, center them, and add temporary invulnerability shield
     const centerX = this.virtualWidth / 2;
@@ -1432,6 +1706,11 @@ class GameEngine {
 
     // Return to playing state
     this.state = 'PLAYING';
+    this.lastTime = performance.now(); // Reset lastTime to prevent dt jump
+    if (!this.isLoopRunning) {
+      this.isLoopRunning = true;
+      requestAnimationFrame((t) => this.loop(t));
+    }
     
     // Hide life saver screen and show HUD controls
     if (this.lifeSaverScreen) {
@@ -2055,14 +2334,71 @@ class GameEngine {
       this.ctx.save();
       this.ctx.translate(balloon.x, balloon.y);
       
-      // Apply neon glowing effects in Night Mode
+      // Apply neon glowing effects in Night Mode (or override shadow if custom skin)
       if (this.isNightMode) {
         this.ctx.shadowBlur = 18;
-        this.ctx.shadowColor = balloon.color;
+        this.ctx.shadowColor = this.equippedSkin === 'skin_gold' ? '#ffd700' : (this.equippedSkin === 'skin_cyber' ? '#00f0ff' : balloon.color);
       }
       
-      // Standard Balloon Body (egg shape drawing)
-      this.ctx.fillStyle = balloon.color;
+      // Determine balloon body fill style
+      if (this.equippedSkin === 'skin_gold') {
+        const grad = this.ctx.createRadialGradient(-balloon.radius * 0.3, -balloon.radius * 0.3, balloon.radius * 0.1, 0, 0, balloon.radius);
+        grad.addColorStop(0, '#fff7c2');
+        grad.addColorStop(0.4, '#ffd700');
+        grad.addColorStop(1, '#b59310');
+        this.ctx.fillStyle = grad;
+      } else if (this.equippedSkin === 'skin_steam') {
+        const grad = this.ctx.createRadialGradient(-balloon.radius * 0.3, -balloon.radius * 0.3, balloon.radius * 0.1, 0, 0, balloon.radius);
+        grad.addColorStop(0, '#e2e8f0');
+        grad.addColorStop(0.5, '#64748b');
+        grad.addColorStop(1, '#334155');
+        this.ctx.fillStyle = grad;
+      } else if (this.equippedSkin === 'skin_cyber') {
+        this.ctx.fillStyle = 'rgba(15, 23, 42, 0.82)'; // dark glass
+      } else {
+        // Default standard skin
+        this.ctx.fillStyle = balloon.color;
+      }
+      
+      // Draw Kitty ears if Kitty Skin
+      if (this.equippedSkin === 'skin_kitty') {
+        this.ctx.fillStyle = balloon.color;
+        this.ctx.beginPath();
+        // Left Ear
+        this.ctx.moveTo(-balloon.radius * 0.7, -balloon.radius * 0.95);
+        this.ctx.lineTo(-balloon.radius * 0.9, -balloon.radius * 1.4);
+        this.ctx.lineTo(-balloon.radius * 0.3, -balloon.radius * 1.15);
+        this.ctx.closePath();
+        this.ctx.fill();
+        
+        // Right Ear
+        this.ctx.beginPath();
+        this.ctx.moveTo(balloon.radius * 0.7, -balloon.radius * 0.95);
+        this.ctx.lineTo(balloon.radius * 0.9, -balloon.radius * 1.4);
+        this.ctx.lineTo(balloon.radius * 0.3, -balloon.radius * 1.15);
+        this.ctx.closePath();
+        this.ctx.fill();
+        
+        // Pink inner ears
+        this.ctx.fillStyle = '#ff9ebb';
+        this.ctx.beginPath();
+        this.ctx.moveTo(-balloon.radius * 0.65, -balloon.radius * 1.02);
+        this.ctx.lineTo(-balloon.radius * 0.8, -balloon.radius * 1.35);
+        this.ctx.lineTo(-balloon.radius * 0.4, -balloon.radius * 1.13);
+        this.ctx.closePath();
+        this.ctx.fill();
+        this.ctx.beginPath();
+        this.ctx.moveTo(balloon.radius * 0.65, -balloon.radius * 1.02);
+        this.ctx.lineTo(balloon.radius * 0.8, -balloon.radius * 1.35);
+        this.ctx.lineTo(balloon.radius * 0.4, -balloon.radius * 1.13);
+        this.ctx.closePath();
+        this.ctx.fill();
+        
+        // Reset color to draw main body
+        this.ctx.fillStyle = balloon.color;
+      }
+
+      // Draw Main Balloon Body (egg shape path)
       this.ctx.beginPath();
       this.ctx.moveTo(0, balloon.radius);
       // Left curve
@@ -2079,37 +2415,276 @@ class GameEngine {
       );
       this.ctx.fill();
       
-      // Balloon Squeezed base tie (triangle at bottom)
+      // Cyber Neon Outlining
+      if (this.equippedSkin === 'skin_cyber') {
+        this.ctx.strokeStyle = balloon.color;
+        this.ctx.lineWidth = 2.5;
+        this.ctx.stroke();
+      }
+
+      // Draw Balloon Squeezed base tie (triangle at bottom)
+      this.ctx.fillStyle = this.equippedSkin === 'skin_gold' ? '#ffd700' : (this.equippedSkin === 'skin_steam' ? '#64748b' : (this.equippedSkin === 'skin_cyber' ? 'rgba(15, 23, 42, 0.95)' : balloon.color));
       this.ctx.beginPath();
       this.ctx.moveTo(0, balloon.radius - 2);
       this.ctx.lineTo(-6, balloon.radius + 6);
       this.ctx.lineTo(6, balloon.radius + 6);
       this.ctx.closePath();
       this.ctx.fill();
-      
-      // Balloon String
-      this.ctx.shadowBlur = 0; // Disable glow for string
-      this.ctx.strokeStyle = this.isNightMode ? 'rgba(255, 255, 255, 0.4)' : 'rgba(12, 74, 110, 0.5)';
-      this.ctx.lineWidth = 1.5;
-      this.ctx.beginPath();
-      this.ctx.moveTo(0, balloon.radius + 6);
-      // S-curve string trailing down
-      this.ctx.bezierCurveTo(
-        -8, balloon.radius + 18,
-        8, balloon.radius + 30,
-        0, balloon.radius + 45
-      );
-      this.ctx.stroke();
+      if (this.equippedSkin === 'skin_cyber') {
+        this.ctx.strokeStyle = balloon.color;
+        this.ctx.lineWidth = 2.0;
+        this.ctx.stroke();
+      }
 
-      // Highlight gloss sheen (3D bubble effect)
-      this.ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-      this.ctx.beginPath();
-      this.ctx.ellipse(
-        -balloon.radius * 0.35, -balloon.radius * 0.6,
-        balloon.radius * 0.22, balloon.radius * 0.35,
-        Math.PI / 6, 0, Math.PI * 2
-      );
-      this.ctx.fill();
+      // Draw details for custom skins
+      if (this.equippedSkin === 'skin_gold') {
+        // Draw Gold Crown
+        const cy = -balloon.radius * 1.25;
+        this.ctx.fillStyle = '#ffd700';
+        this.ctx.strokeStyle = '#b59310';
+        this.ctx.lineWidth = 1.2;
+        this.ctx.beginPath();
+        this.ctx.moveTo(-10, cy);
+        this.ctx.lineTo(-12, cy - 8);
+        this.ctx.lineTo(-5, cy - 3);
+        this.ctx.lineTo(0, cy - 10);
+        this.ctx.lineTo(5, cy - 3);
+        this.ctx.lineTo(12, cy - 8);
+        this.ctx.lineTo(10, cy);
+        this.ctx.closePath();
+        this.ctx.fill();
+        this.ctx.stroke();
+        
+        this.ctx.fillStyle = '#ff3b30'; // Gem
+        this.ctx.beginPath();
+        this.ctx.arc(0, cy - 3, 2, 0, Math.PI * 2);
+        this.ctx.fill();
+      } else if (this.equippedSkin === 'skin_steam') {
+        // Draw copper rivets
+        this.ctx.fillStyle = '#b45309';
+        this.ctx.strokeStyle = '#78350f';
+        this.ctx.lineWidth = 0.8;
+        const rivetRadius = 2.0;
+        const angles = [Math.PI * 0.2, Math.PI * 0.45, Math.PI * 0.65, Math.PI * 1.35, Math.PI * 1.55, Math.PI * 1.8];
+        angles.forEach(a => {
+          const rx = Math.cos(a) * balloon.radius * 0.82;
+          const ry = Math.sin(a) * balloon.radius * 0.82;
+          this.ctx.beginPath();
+          this.ctx.arc(rx, ry, rivetRadius, 0, Math.PI * 2);
+          this.ctx.fill();
+          this.ctx.stroke();
+        });
+        
+        // Copper exhaust pipe on the right side
+        const px = balloon.radius * 0.82;
+        const py = balloon.radius * 0.35;
+        this.ctx.fillStyle = '#d97706';
+        this.ctx.fillRect(px, py - 4, 8, 8);
+        this.ctx.strokeStyle = '#78350f';
+        this.ctx.lineWidth = 1.0;
+        this.ctx.strokeRect(px, py - 4, 8, 8);
+        
+        this.ctx.fillStyle = '#b45309';
+        this.ctx.fillRect(px + 6, py - 6, 3, 12);
+        
+        // Spawn small steam/smoke puff from exhaust on random cycles
+        if (Math.random() > 0.86) {
+          this.particles.push({
+            type: 'smoke',
+            x: balloon.x + px + 10,
+            y: balloon.y + py,
+            vx: 15 + Math.random() * 10,
+            vy: -10 - Math.random() * 20,
+            size: 2 + Math.random() * 3,
+            color: 'rgba(203, 213, 225, 0.35)',
+            alpha: 0.6,
+            decay: 2.0
+          });
+        }
+      } else if (this.equippedSkin === 'skin_cyber') {
+        // Draw circuit paths
+        this.ctx.strokeStyle = balloon.color;
+        this.ctx.lineWidth = 1.2;
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, -balloon.radius * 0.95);
+        this.ctx.lineTo(0, balloon.radius * 0.25);
+        this.ctx.lineTo(-balloon.radius * 0.45, balloon.radius * 0.65);
+        this.ctx.moveTo(0, -balloon.radius * 0.35);
+        this.ctx.lineTo(balloon.radius * 0.45, -balloon.radius * 0.15);
+        this.ctx.lineTo(balloon.radius * 0.45, balloon.radius * 0.35);
+        this.ctx.stroke();
+        
+        // Glowing nodes
+        this.ctx.fillStyle = '#ffffff';
+        const nodes = [
+          {x: 0, y: -balloon.radius * 0.95},
+          {x: -balloon.radius * 0.45, y: balloon.radius * 0.65},
+          {x: balloon.radius * 0.45, y: balloon.radius * 0.35}
+        ];
+        nodes.forEach(n => {
+          this.ctx.beginPath();
+          this.ctx.arc(n.x, n.y, 2.5, 0, Math.PI * 2);
+          this.ctx.fill();
+        });
+      } else if (this.equippedSkin === 'skin_kitty') {
+        // Eyes
+        this.ctx.fillStyle = '#0f172a';
+        this.ctx.beginPath();
+        this.ctx.arc(-balloon.radius * 0.28, -balloon.radius * 0.35, 2.5, 0, Math.PI * 2);
+        this.ctx.arc(balloon.radius * 0.28, -balloon.radius * 0.35, 2.5, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // Nose
+        this.ctx.fillStyle = '#ff9ebb';
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, -balloon.radius * 0.15);
+        this.ctx.lineTo(-2.5, -balloon.radius * 0.22);
+        this.ctx.lineTo(2.5, -balloon.radius * 0.22);
+        this.ctx.closePath();
+        this.ctx.fill();
+        
+        // Whiskers
+        this.ctx.strokeStyle = '#0f172a';
+        this.ctx.lineWidth = 1.2;
+        this.ctx.beginPath();
+        this.ctx.moveTo(-balloon.radius * 0.35, -balloon.radius * 0.15);
+        this.ctx.lineTo(-balloon.radius * 0.75, -balloon.radius * 0.22);
+        this.ctx.moveTo(-balloon.radius * 0.35, -balloon.radius * 0.1);
+        this.ctx.lineTo(-balloon.radius * 0.75, -balloon.radius * 0.1);
+        this.ctx.moveTo(balloon.radius * 0.35, -balloon.radius * 0.15);
+        this.ctx.lineTo(balloon.radius * 0.75, -balloon.radius * 0.22);
+        this.ctx.moveTo(balloon.radius * 0.35, -balloon.radius * 0.1);
+        this.ctx.lineTo(balloon.radius * 0.75, -balloon.radius * 0.1);
+        this.ctx.stroke();
+        
+        // Swaying Tail
+        this.ctx.save();
+        const tailSway = Math.sin(performance.now() / 150) * 8;
+        this.ctx.strokeStyle = balloon.color;
+        this.ctx.lineWidth = 5.0;
+        this.ctx.lineCap = 'round';
+        this.ctx.beginPath();
+        this.ctx.moveTo(balloon.radius * 0.4, balloon.radius - 2);
+        this.ctx.quadraticCurveTo(
+          balloon.radius * 0.75 + tailSway, balloon.radius + 15,
+          balloon.radius * 0.55 + tailSway * 1.5, balloon.radius + 28
+        );
+        this.ctx.stroke();
+        
+        this.ctx.strokeStyle = '#ff9ebb';
+        this.ctx.lineWidth = 5.0;
+        this.ctx.beginPath();
+        this.ctx.moveTo(balloon.radius * 0.55 + tailSway * 1.5, balloon.radius + 26);
+        this.ctx.lineTo(balloon.radius * 0.55 + tailSway * 1.5, balloon.radius + 28);
+        this.ctx.stroke();
+        this.ctx.restore();
+      }
+
+      // Draw Balloon String or Custom Tassel
+      this.ctx.shadowBlur = 0; // Disable glow
+      if (this.equippedAttachment === 'attach_tassel') {
+        const tasselSway = Math.sin(performance.now() / 150) * 6;
+        this.ctx.strokeStyle = '#fbbf24'; // Gold Braided cord
+        this.ctx.lineWidth = 2.2;
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, balloon.radius + 6);
+        this.ctx.quadraticCurveTo(tasselSway, balloon.radius + 22, tasselSway * 1.5, balloon.radius + 36);
+        this.ctx.stroke();
+        
+        this.ctx.fillStyle = '#b45309'; // Bead
+        this.ctx.beginPath();
+        this.ctx.arc(tasselSway * 1.5, balloon.radius + 36, 4, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        this.ctx.fillStyle = '#ef4444'; // Red tassels
+        this.ctx.beginPath();
+        this.ctx.moveTo(tasselSway * 1.5 - 3, balloon.radius + 38);
+        this.ctx.lineTo(tasselSway * 1.5 + 3, balloon.radius + 38);
+        this.ctx.lineTo(tasselSway * 1.5 + 7, balloon.radius + 56);
+        this.ctx.lineTo(tasselSway * 1.5 - 7, balloon.radius + 56);
+        this.ctx.closePath();
+        this.ctx.fill();
+      } else {
+        // Standard String
+        this.ctx.strokeStyle = this.isNightMode ? 'rgba(255, 255, 255, 0.4)' : 'rgba(12, 74, 110, 0.5)';
+        this.ctx.lineWidth = 1.5;
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, balloon.radius + 6);
+        this.ctx.bezierCurveTo(
+          -8, balloon.radius + 18,
+          8, balloon.radius + 30,
+          0, balloon.radius + 45
+        );
+        this.ctx.stroke();
+      }
+
+      // Highlight gloss sheen (3D bubble effect, not drawn for cyber glass skin)
+      if (this.equippedSkin !== 'skin_cyber') {
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+        this.ctx.beginPath();
+        this.ctx.ellipse(
+          -balloon.radius * 0.35, -balloon.radius * 0.6,
+          balloon.radius * 0.22, balloon.radius * 0.35,
+          Math.PI / 6, 0, Math.PI * 2
+        );
+        this.ctx.fill();
+      }
+
+      // Draw Propeller Hat Attachment
+      if (this.equippedAttachment === 'attach_propeller') {
+        const capY = -balloon.radius * 1.22;
+        this.ctx.fillStyle = '#fbbf24'; // Yellow cap
+        this.ctx.beginPath();
+        this.ctx.arc(0, capY, 8, Math.PI, 0);
+        this.ctx.fill();
+        
+        this.ctx.strokeStyle = '#1e293b';
+        this.ctx.lineWidth = 2.0;
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, capY - 3);
+        this.ctx.lineTo(0, capY - 11);
+        this.ctx.stroke();
+        
+        const spinAngle = performance.now() / 40;
+        const bladeLen = 14;
+        const bx = Math.cos(spinAngle) * bladeLen;
+        const by = Math.sin(spinAngle) * 2.5;
+        this.ctx.strokeStyle = '#ef4444'; // Red blades
+        this.ctx.lineWidth = 3.5;
+        this.ctx.lineCap = 'round';
+        this.ctx.beginPath();
+        this.ctx.moveTo(-bx, capY - 11 - by);
+        this.ctx.lineTo(bx, capY - 11 + by);
+        this.ctx.stroke();
+        
+        this.ctx.fillStyle = '#1e293b';
+        this.ctx.beginPath();
+        this.ctx.arc(0, capY - 11, 2, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+
+      // Draw Shield Core Ring Attachment
+      if (this.equippedAttachment === 'attach_ring') {
+        this.ctx.save();
+        this.ctx.rotate(Math.PI / 12); // tilt
+        this.ctx.strokeStyle = 'rgba(0, 240, 255, 0.75)';
+        this.ctx.lineWidth = 3.5;
+        this.ctx.shadowBlur = 10;
+        this.ctx.shadowColor = '#00f0ff';
+        this.ctx.beginPath();
+        this.ctx.ellipse(0, -balloon.radius * 0.1, balloon.radius * 1.45, balloon.radius * 0.38, 0, 0, Math.PI * 2);
+        this.ctx.stroke();
+        
+        // Draw moving orbit bead
+        const beadTime = performance.now() / 280;
+        const bx = Math.cos(beadTime) * balloon.radius * 1.45;
+        const by = Math.sin(beadTime) * balloon.radius * 0.38;
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.beginPath();
+        this.ctx.arc(bx, by - balloon.radius * 0.1, 3.5, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.restore();
+      }
 
       // Draw Shield Bubble if active
       if (balloon.hasShield) {
@@ -2234,6 +2809,27 @@ class GameEngine {
         
         this.ctx.fillText(p.text, p.x, p.y);
       } else if (p.type === 'sparkle') {
+        this.ctx.fillStyle = p.color;
+        this.ctx.beginPath();
+        this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        this.ctx.fill();
+      } else if (p.type === 'trail_star') {
+        this.ctx.fillStyle = p.color;
+        if (this.isNightMode) {
+          this.ctx.shadowBlur = 8;
+          this.ctx.shadowColor = p.color;
+        }
+        const s = p.size;
+        this.ctx.beginPath();
+        this.ctx.moveTo(p.x, p.y - s);
+        this.ctx.quadraticCurveTo(p.x, p.y, p.x + s, p.y);
+        this.ctx.quadraticCurveTo(p.x, p.y, p.x, p.y + s);
+        this.ctx.quadraticCurveTo(p.x, p.y, p.x - s, p.y);
+        this.ctx.quadraticCurveTo(p.x, p.y, p.x, p.y - s);
+        this.ctx.closePath();
+        this.ctx.fill();
+        this.ctx.shadowBlur = 0;
+      } else if (p.type === 'smoke') {
         this.ctx.fillStyle = p.color;
         this.ctx.beginPath();
         this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
