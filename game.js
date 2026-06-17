@@ -548,6 +548,7 @@ class GameEngine {
       if (this.rainTimer === 0 && prevRain > 0) {
         // Storm ended, start the 20-second rainbow!
         this.rainbowTimer = 20.0;
+        this.revertToDayMode(); // Force-transition back to Day Mode (bright sky)
         if (window.audioManager) {
           window.audioManager.setRainMode(false);
         }
@@ -1380,11 +1381,24 @@ class GameEngine {
         'rgba(168, 85, 247, '    // Violet
       ];
       
-      this.ctx.lineWidth = 5;
+      // Soft feathered effect (glow) so lines merge beautifully together
+      this.ctx.shadowBlur = 12;
+      this.ctx.shadowColor = 'rgba(255, 255, 255, 0.45)';
+      
       colors.forEach((colorPrefix, idx) => {
-        this.ctx.strokeStyle = colorPrefix + rainbowOpacity + ')';
+        const r = baseRadius - idx * 6; // slightly wider spacing to avoid overlap blending issues
+        
+        // Linear gradient horizontally across the arch radius to fade out left/right ends
+        const grad = this.ctx.createLinearGradient(centerX - r, centerY, centerX + r, centerY);
+        grad.addColorStop(0, colorPrefix + '0)'); // completely transparent at left end
+        grad.addColorStop(0.2, colorPrefix + rainbowOpacity + ')'); // fully visible in center-left
+        grad.addColorStop(0.8, colorPrefix + rainbowOpacity + ')'); // fully visible in center-right
+        grad.addColorStop(1, colorPrefix + '0)'); // completely transparent at right end
+        
+        this.ctx.strokeStyle = grad;
+        this.ctx.lineWidth = 6;
         this.ctx.beginPath();
-        this.ctx.arc(centerX, centerY, baseRadius - idx * 5, Math.PI, 0, false);
+        this.ctx.arc(centerX, centerY, r, Math.PI, 0, false);
         this.ctx.stroke();
       });
       this.ctx.restore();

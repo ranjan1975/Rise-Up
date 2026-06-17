@@ -16,13 +16,13 @@ class SoundManager {
     this.dayPath = 'Balloon Drift.mp3';
     this.nightPath = 'Moonlit Balloon Loop.mp3';
     this.ufoPath = 'UFO Descent.mp3';
-    this.rainPath = 'Thunder Clap.mp3';
+    this.thunderPath = 'Thunder Clap.mp3';
     this.birdPaths = ['Bird1.mp3', 'Bird2.mp3', 'Bird3.mp3'];
     
     this.audioDay = null;
     this.audioNight = null;
     this.audioUfo = null;
-    this.audioRain = null;
+    this.audioThunder = null;
     this.audioBirds = [];
     this.currentAudio = null;
   }
@@ -55,19 +55,18 @@ class SoundManager {
       this.audioUfo.loop = true;
       this.audioUfo.volume = 0.18; // Slightly louder but still low
     }
-    if (!this.audioRain) {
-      this.audioRain = new Audio(this.rainPath);
-      this.audioRain.preload = 'auto';
-      this.audioRain.loop = true;
-      this.audioRain.volume = 0.35;
+    if (!this.audioThunder) {
+      this.audioThunder = new Audio(this.thunderPath);
+      this.audioThunder.preload = 'auto';
+      this.audioThunder.volume = 0.55;
       
       // Mobile Autoplay unlock: play and immediately pause
       const unlock = () => {
-        this.audioRain.play().then(() => {
-          this.audioRain.pause();
-          this.audioRain.currentTime = 0;
+        this.audioThunder.play().then(() => {
+          this.audioThunder.pause();
+          this.audioThunder.currentTime = 0;
         }).catch(err => {
-          console.warn("Mobile unlock skipped/blocked for:", this.rainPath, err);
+          console.warn("Mobile unlock skipped/blocked for:", this.thunderPath, err);
         });
       };
       unlock();
@@ -124,8 +123,8 @@ class SoundManager {
     if (this.audioUfo) {
       this.audioUfo.volume = this.isMuted ? 0 : 0.18;
     }
-    if (this.audioRain) {
-      this.audioRain.volume = this.isMuted ? 0 : 0.35;
+    if (this.audioThunder) {
+      this.audioThunder.volume = this.isMuted ? 0 : 0.55;
     }
     if (this.audioBirds) {
       this.audioBirds.forEach(audio => {
@@ -497,9 +496,7 @@ class SoundManager {
     this.init();
     
     let targetAudio = this.audioDay;
-    if (this.isRainActive) {
-      targetAudio = this.audioRain;
-    } else if (this.isUfoActive) {
+    if (this.isUfoActive) {
       targetAudio = this.audioUfo;
     } else if (this.isNightMode) {
       targetAudio = this.audioNight;
@@ -704,8 +701,7 @@ class SoundManager {
   }
 
   // Play a dynamic low frequency thunder rumble and sharp crack using Web Audio API
-  playThunder() {
-    this.init();
+  playSynthThunder() {
     if (!this.ctx || this.isMuted) return;
 
     const now = this.ctx.currentTime;
@@ -759,6 +755,27 @@ class SoundManager {
     
     rumbleOsc.start(now);
     rumbleOsc.stop(now + 2.05);
+  }
+
+  // Play the authentic Thunder Clap MP3, synced with the lightning animation
+  playThunder() {
+    this.init();
+    if (this.isMuted) return;
+    
+    if (this.audioThunder) {
+      try {
+        this.audioThunder.currentTime = 0;
+        this.audioThunder.play().catch(err => {
+          console.warn("Audio play blocked or failed for thunder clap:", err);
+          this.playSynthThunder(); // Fallback to synthesized thunder
+        });
+      } catch (e) {
+        console.warn("Thunder play error, falling back to synth:", e);
+        this.playSynthThunder();
+      }
+    } else {
+      this.playSynthThunder();
+    }
   }
 
   setUfoActive(active) {
