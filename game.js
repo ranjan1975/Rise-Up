@@ -2727,6 +2727,25 @@ class GameEngine {
         this.ctx.beginPath();
         this.ctx.arc(0, cy - r * 0.12, r * 0.08, 0, Math.PI * 2);
         this.ctx.fill();
+
+        // Draw Celebration Text on the Balloon Body
+        if (this.state === 'CELEBRATION') {
+          this.ctx.save();
+          this.ctx.fillStyle = '#1e1b4b'; // Dark blue/indigo for crisp contrast on gold
+          this.ctx.textAlign = 'center';
+          this.ctx.textBaseline = 'middle';
+          
+          const fontSizeMain = Math.max(9, Math.round(r * 0.12)); // ~16px at 130 radius
+          const fontSizeSub = Math.max(7, Math.round(r * 0.08));  // ~10px at 130 radius
+          
+          this.ctx.font = `extrabold ${fontSizeMain}px var(--font-family)`;
+          this.ctx.fillText('CELEBRATION TIME!', 0, -r * 0.2);
+          
+          this.ctx.font = `bold ${fontSizeSub}px var(--font-family)`;
+          this.ctx.fillText('YOU REACHED A SCORE OF 5000', 0, r * 0.1);
+          
+          this.ctx.restore();
+        }
       } else if (this.equippedSkin === 'skin_steam') {
         // Draw copper rivets
         this.ctx.fillStyle = '#b45309';
