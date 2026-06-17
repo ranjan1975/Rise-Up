@@ -206,12 +206,7 @@ class GameEngine {
       btn.addEventListener('pointerdown', (e) => {
         e.stopPropagation();
         const itemId = btn.dataset.id;
-        let category = 'skins';
-        const parent = btn.parentElement;
-        if (parent) {
-          if (parent.id === 'category-trails') category = 'trails';
-          if (parent.id === 'category-decos') category = 'decos';
-        }
+        const category = btn.dataset.category || 'skins';
         this.buyOrEquipItem(itemId, category);
       });
     });
@@ -277,24 +272,33 @@ class GameEngine {
 
     this.shopItemBtns.forEach(btn => {
       const itemId = btn.dataset.id;
-      const statusSpan = btn.querySelector('.item-status');
+      const parentCard = btn.parentElement;
+      const priceSpan = parentCard ? parentCard.querySelector('.item-price') : null;
       
       // Reset classes
       btn.classList.remove('active', 'owned-buy', 'disabled-buy');
 
       // Check if equipped
       const isEquipped = (this.equippedSkin === itemId || this.equippedTrail === itemId || this.equippedAttachment === itemId);
+      const isOwned = this.ownedItems.includes(itemId) || itemId === 'default' || itemId === 'none';
       
       if (isEquipped) {
         btn.classList.add('active');
-        if (statusSpan) statusSpan.innerText = 'Equipped';
-      } else if (this.ownedItems.includes(itemId) || itemId === 'default' || itemId === 'none') {
+        btn.innerText = 'Equipped';
+        if (priceSpan) priceSpan.style.display = 'none'; // Hide price on card when equipped
+      } else if (isOwned) {
         btn.classList.add('owned-buy');
-        if (statusSpan) statusSpan.innerText = 'Equip';
+        btn.innerText = 'Equip';
+        if (priceSpan) priceSpan.style.display = 'none'; // Hide price on card when owned
       } else {
         // Unowned, show price
         const price = prices[itemId] || 0;
-        if (statusSpan) statusSpan.innerText = `${price} 🪙`;
+        btn.innerText = 'Equip';
+        
+        if (priceSpan) {
+          priceSpan.style.display = 'block';
+          priceSpan.innerText = itemId === 'default' || itemId === 'none' ? 'Free' : `${price} 🪙`;
+        }
         
         if (this.totalCoins < price) {
           btn.classList.add('disabled-buy');

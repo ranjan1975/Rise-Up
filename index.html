@@ -85,79 +85,154 @@
         <div class="shop-items-container">
           <!-- Skins Category -->
           <div class="shop-category-list" id="category-skins">
-            <button class="shop-item-btn active" id="item-skin-default" data-id="default">
-              <span class="item-emoji">🎈</span>
-              <span class="item-name">Default</span>
-              <span class="item-status">Equipped</span>
-            </button>
-            <button class="shop-item-btn" id="item-skin-gold" data-id="skin_gold">
-              <span class="item-emoji">👑</span>
-              <span class="item-name">Royale</span>
-              <span class="item-status">1000 🪙</span>
-            </button>
-            <button class="shop-item-btn" id="item-skin-steam" data-id="skin_steam">
-              <span class="item-emoji">⚙️</span>
-              <span class="item-name">Ironclad</span>
-              <span class="item-status">600 🪙</span>
-            </button>
-            <button class="shop-item-btn" id="item-skin-cyber" data-id="skin_cyber">
-              <span class="item-emoji">🌐</span>
-              <span class="item-name">Cyber</span>
-              <span class="item-status">800 🪙</span>
-            </button>
-            <button class="shop-item-btn" id="item-skin-kitty" data-id="skin_kitty">
-              <span class="item-emoji">🐱</span>
-              <span class="item-name">Kitty</span>
-              <span class="item-status">500 🪙</span>
-            </button>
+            <div class="shop-item-card">
+              <div class="item-info-row">
+                <div class="item-left-side">
+                  <span class="item-emoji">🎈</span>
+                  <span class="item-name">Default</span>
+                </div>
+                <span class="item-price">Free</span>
+              </div>
+              <button class="shop-item-btn" id="item-skin-default" data-id="default" data-category="skins">Equip</button>
+            </div>
+            
+            <div class="shop-item-card">
+              <div class="item-info-row">
+                <div class="item-left-side">
+                  <span class="item-emoji">👑</span>
+                  <span class="item-name">Royale</span>
+                </div>
+                <span class="item-price">1000 🪙</span>
+              </div>
+              <button class="shop-item-btn" id="item-skin-gold" data-id="skin_gold" data-category="skins">Equip</button>
+            </div>
+
+            <div class="shop-item-card">
+              <div class="item-info-row">
+                <div class="item-left-side">
+                  <span class="item-emoji">⚙️</span>
+                  <span class="item-name">Ironclad</span>
+                </div>
+                <span class="item-price">600 🪙</span>
+              </div>
+              <button class="shop-item-btn" id="item-skin-steam" data-id="skin_steam" data-category="skins">Equip</button>
+            </div>
+
+            <div class="shop-item-card">
+              <div class="item-info-row">
+                <div class="item-left-side">
+                  <span class="item-emoji">🌐</span>
+                  <span class="item-name">Cyber</span>
+                </div>
+                <span class="item-price">800 🪙</span>
+              </div>
+              <button class="shop-item-btn" id="item-skin-cyber" data-id="skin_cyber" data-category="skins">Equip</button>
+            </div>
+
+            <div class="shop-item-card">
+              <div class="item-info-row">
+                <div class="item-left-side">
+                  <span class="item-emoji">🐱</span>
+                  <span class="item-name">Kitty</span>
+                </div>
+                <span class="item-price">500 🪙</span>
+              </div>
+              <button class="shop-item-btn" id="item-skin-kitty" data-id="skin_kitty" data-category="skins">Equip</button>
+            </div>
           </div>
           
           <!-- Trails Category -->
           <div class="shop-category-list hidden" id="category-trails">
-            <button class="shop-item-btn active" id="item-trail-none" data-id="none">
-              <span class="item-emoji">❌</span>
-              <span class="item-name">No Trail</span>
-              <span class="item-status">Equipped</span>
-            </button>
-            <button class="shop-item-btn" id="item-trail-rainbow" data-id="trail_rainbow">
-              <span class="item-emoji">🌈</span>
-              <span class="item-name">Rainbow</span>
-              <span class="item-status">400 🪙</span>
-            </button>
-            <button class="shop-item-btn" id="item-trail-stars" data-id="trail_stars">
-              <span class="item-emoji">⭐</span>
-              <span class="item-name">Stars</span>
-              <span class="item-status">300 🪙</span>
-            </button>
-            <button class="shop-item-btn" id="item-trail-rocket" data-id="trail_rocket">
-              <span class="item-emoji">🚀</span>
-              <span class="item-name">Exhaust</span>
-              <span class="item-status">400 🪙</span>
-            </button>
+            <div class="shop-item-card">
+              <div class="item-info-row">
+                <div class="item-left-side">
+                  <span class="item-emoji">❌</span>
+                  <span class="item-name">No Trail</span>
+                </div>
+                <span class="item-price">Free</span>
+              </div>
+              <button class="shop-item-btn" id="item-trail-none" data-id="none" data-category="trails">Equip</button>
+            </div>
+
+            <div class="shop-item-card">
+              <div class="item-info-row">
+                <div class="item-left-side">
+                  <span class="item-emoji">🌈</span>
+                  <span class="item-name">Rainbow</span>
+                </div>
+                <span class="item-price">400 🪙</span>
+              </div>
+              <button class="shop-item-btn" id="item-trail-rainbow" data-id="trail_rainbow" data-category="trails">Equip</button>
+            </div>
+
+            <div class="shop-item-card">
+              <div class="item-info-row">
+                <div class="item-left-side">
+                  <span class="item-emoji">⭐</span>
+                  <span class="item-name">Stars</span>
+                </div>
+                <span class="item-price">300 🪙</span>
+              </div>
+              <button class="shop-item-btn" id="item-trail-stars" data-id="trail_stars" data-category="trails">Equip</button>
+            </div>
+
+            <div class="shop-item-card">
+              <div class="item-info-row">
+                <div class="item-left-side">
+                  <span class="item-emoji">🚀</span>
+                  <span class="item-name">Exhaust</span>
+                </div>
+                <span class="item-price">400 🪙</span>
+              </div>
+              <button class="shop-item-btn" id="item-trail-rocket" data-id="trail_rocket" data-category="trails">Equip</button>
+            </div>
           </div>
           
           <!-- Decos Category -->
           <div class="shop-category-list hidden" id="category-decos">
-            <button class="shop-item-btn active" id="item-attach-none" data-id="none">
-              <span class="item-emoji">❌</span>
-              <span class="item-name">No Deco</span>
-              <span class="item-status">Equipped</span>
-            </button>
-            <button class="shop-item-btn" id="item-attach-propeller" data-id="attach_propeller">
-              <span class="item-emoji">🚁</span>
-              <span class="item-name">Propeller</span>
-              <span class="item-status">350 🪙</span>
-            </button>
-            <button class="shop-item-btn" id="item-attach-tassel" data-id="attach_tassel">
-              <span class="item-emoji">🏮</span>
-              <span class="item-name">Tassel</span>
-              <span class="item-status">200 🪙</span>
-            </button>
-            <button class="shop-item-btn" id="item-attach-ring" data-id="attach_ring">
-              <span class="item-emoji">🪐</span>
-              <span class="item-name">Orbit Ring</span>
-              <span class="item-status">500 🪙</span>
-            </button>
+            <div class="shop-item-card">
+              <div class="item-info-row">
+                <div class="item-left-side">
+                  <span class="item-emoji">❌</span>
+                  <span class="item-name">No Deco</span>
+                </div>
+                <span class="item-price">Free</span>
+              </div>
+              <button class="shop-item-btn" id="item-attach-none" data-id="none" data-category="decos">Equip</button>
+            </div>
+
+            <div class="shop-item-card">
+              <div class="item-info-row">
+                <div class="item-left-side">
+                  <span class="item-emoji">🚁</span>
+                  <span class="item-name">Propeller</span>
+                </div>
+                <span class="item-price">350 🪙</span>
+              </div>
+              <button class="shop-item-btn" id="item-attach-propeller" data-id="attach_propeller" data-category="decos">Equip</button>
+            </div>
+
+            <div class="shop-item-card">
+              <div class="item-info-row">
+                <div class="item-left-side">
+                  <span class="item-emoji">🏮</span>
+                  <span class="item-name">Tassel</span>
+                </div>
+                <span class="item-price">200 🪙</span>
+              </div>
+              <button class="shop-item-btn" id="item-attach-tassel" data-id="attach_tassel" data-category="decos">Equip</button>
+            </div>
+
+            <div class="shop-item-card">
+              <div class="item-info-row">
+                <div class="item-left-side">
+                  <span class="item-emoji">🪐</span>
+                  <span class="item-name">Orbit Ring</span>
+                </div>
+                <span class="item-price">500 🪙</span>
+              </div>
+              <button class="shop-item-btn" id="item-attach-ring" data-id="attach_ring" data-category="decos">Equip</button>
+            </div>
           </div>
         </div>
       </div>
