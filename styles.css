@@ -682,41 +682,94 @@ body.night-mode {
   font-size: 14px;
 }
 
-/* Shop Sidebar Container */
+/* Shop Sidebar Container - Sliding Shelf style */
 .shop-overlay {
   position: absolute;
-  top: 95px;
-  right: 15px;
-  width: 145px;
-  bottom: 80px;
-  z-index: 25;
+  top: 100px;
+  right: 0;
+  width: 160px;
+  bottom: 100px;
+  z-index: 45; /* Floats over canvas/HUD, under pause menu */
   pointer-events: auto;
-  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
+  transform: translateX(130px); /* Shunted off-screen, leaving 30px handle visible */
+  transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .shop-overlay.hidden {
   display: none !important;
 }
 
+/* Slide open on hover or when expanded class is added */
+.shop-overlay:hover,
+.shop-overlay.expanded {
+  transform: translateX(0);
+}
+
 .shop-card {
+  position: relative; /* Setup relative anchor for handle tab absolute positioning */
   height: 100%;
   background: var(--day-glass-bg);
   border: 1px solid var(--day-glass-border);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border-radius: 20px;
+  border-radius: 20px 0 0 20px; /* Only round left corners */
   padding: 12px 8px;
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow-md);
-  overflow: hidden;
+  overflow: visible; /* CRITICAL: allows pseudo-element handle tab to stick out */
   box-sizing: border-box;
 }
 
 #game-container.night-mode .shop-card {
   background: var(--night-glass-bg);
   border-color: var(--night-glass-border);
-  box-shadow: 0 0 15px rgba(0, 240, 255, 0.15);
+  box-shadow: -5px 0 15px rgba(0, 240, 255, 0.1);
+}
+
+/* Sliding Handle Tab sticking out of the card's left edge */
+.shop-card::before {
+  content: "🛍️";
+  position: absolute;
+  left: -36px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-right: none;
+  border-radius: 12px 0 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: -4px 0 10px rgba(0, 0, 0, 0.1);
+  transition: background 0.3s, border-color 0.3s;
+  animation: tabGlow 3s infinite ease-in-out;
+}
+
+#game-container.night-mode .shop-card::before {
+  background: rgba(15, 23, 42, 0.65);
+  border-color: rgba(0, 240, 255, 0.3);
+  box-shadow: -4px 0 10px rgba(0, 240, 255, 0.25);
+  animation: tabGlowNight 3s infinite ease-in-out;
+}
+
+/* Pulsing tab glow animations */
+@keyframes tabGlow {
+  0% { box-shadow: -4px 0 6px rgba(255, 82, 82, 0.2); }
+  50% { box-shadow: -6px 0 12px rgba(255, 82, 82, 0.4); }
+  100% { box-shadow: -4px 0 6px rgba(255, 82, 82, 0.2); }
+}
+
+@keyframes tabGlowNight {
+  0% { box-shadow: -4px 0 6px rgba(0, 240, 255, 0.25); }
+  50% { box-shadow: -6px 0 12px rgba(0, 240, 255, 0.5); }
+  100% { box-shadow: -4px 0 6px rgba(0, 240, 255, 0.25); }
 }
 
 .shop-title {

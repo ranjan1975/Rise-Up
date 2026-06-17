@@ -133,6 +133,9 @@ class GameEngine {
     this.pauseScreen.classList.remove('hidden');
     this.mobileControls.classList.add('hidden');
     this.pauseBtn.classList.add('hidden-control');
+    if (this.shopSidebar) {
+      this.shopSidebar.classList.add('hidden');
+    }
   }
 
   resumeGame() {
@@ -147,6 +150,9 @@ class GameEngine {
       this.mobileControls.classList.remove('hidden');
     }
     this.pauseBtn.classList.remove('hidden-control');
+    if (this.shopSidebar) {
+      this.shopSidebar.classList.remove('hidden');
+    }
     this.lastTime = performance.now(); // Reset lastTime to prevent dt jump
     if (!this.isLoopRunning) {
       this.isLoopRunning = true;
@@ -207,6 +213,18 @@ class GameEngine {
         }
         this.buyOrEquipItem(itemId, category);
       });
+    });
+
+    // 3. Mobile touch/click toggle logic
+    this.shopSidebar.addEventListener('pointerdown', (e) => {
+      e.stopPropagation(); // Prevent canvas dragging
+      this.shopSidebar.classList.add('expanded');
+    });
+
+    document.addEventListener('pointerdown', (e) => {
+      if (this.shopSidebar.classList.contains('expanded') && !this.shopSidebar.contains(e.target)) {
+        this.shopSidebar.classList.remove('expanded');
+      }
     });
 
     this.updateShopUI();
@@ -578,9 +596,7 @@ class GameEngine {
     if (this.lifeSaverScreen) {
       this.lifeSaverScreen.classList.add('hidden');
     }
-    if (this.shopSidebar) {
-      this.shopSidebar.classList.add('hidden');
-    }
+    // We do NOT hide the shopSidebar here, as it acts as a sliding shelf during gameplay
     this.hud.classList.remove('hidden');
     
     if (this.isTouchDevice) {
@@ -1613,6 +1629,9 @@ class GameEngine {
     this.hud.classList.add('hidden');
     this.mobileControls.classList.add('hidden');
     this.pauseBtn.classList.add('hidden-control');
+    if (this.shopSidebar) {
+      this.shopSidebar.classList.add('hidden');
+    }
     if (this.lifeSaverScreen) {
       this.lifeSaverScreen.classList.remove('hidden');
     }
@@ -1720,6 +1739,9 @@ class GameEngine {
     this.pauseBtn.classList.remove('hidden-control');
     if (this.isTouchDevice) {
       this.mobileControls.classList.remove('hidden');
+    }
+    if (this.shopSidebar) {
+      this.shopSidebar.classList.remove('hidden');
     }
 
     // Resume BGM and play pickup sound
