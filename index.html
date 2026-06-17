@@ -91,8 +91,27 @@
           <span>🏆 HIGH SCORE: <strong id="high-score-val">0</strong></span>
         </div>
 
-        <button id="revive-btn" class="btn btn-success" style="margin-bottom: 12px;">Revive (300 Coins)</button>
         <button id="restart-btn" class="btn btn-primary">Ascend Again</button>
+      </div>
+    </div>
+
+    <!-- Glassmorphic Life Saver Screen -->
+    <div id="life-saver-screen" class="screen-overlay hidden">
+      <div class="glass-card rescue-card">
+        <div class="rescue-icon">🆘</div>
+        <h2 class="screen-title text-success" style="color: #10b981; margin-bottom: 8px;">LIFE SAVER!</h2>
+        <p class="rescue-msg" style="margin-bottom: 15px; font-size: 15px; opacity: 0.9;">Spend 300 coins to get a new life and continue?</p>
+        
+        <div class="coins-status" style="margin-bottom: 20px; font-size: 15px;">
+          <span>Your Coins: <strong id="rescue-coins-val" style="color: #ffeb3b;">0</strong> 🪙</span>
+        </div>
+
+        <button id="rescue-yes-btn" class="btn btn-success" style="margin-bottom: 12px;">Yes, Revive (300 Coins)</button>
+        <button id="rescue-no-btn" class="btn btn-secondary" style="margin-bottom: 20px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: white;">No, Give Up</button>
+        
+        <div class="countdown-container" style="font-size: 14px; opacity: 0.8;">
+          <span>Autoplaying Game Over in <strong id="rescue-countdown" style="color: #ff5252; font-size: 16px;">10</strong>s...</span>
+        </div>
       </div>
     </div>
 
@@ -128,7 +147,7 @@
   </div>
 
   <!-- Scripts -->
-  <script src="sound.js?v=8"></script>
-  <script src="game.js?v=8"></script>
+  <script src="sound.js?v=9"></script>
+  <script src="game.js?v=9"></script>
 </body>
 </html>

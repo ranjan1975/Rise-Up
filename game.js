@@ -17,7 +17,9 @@ class GameEngine {
     this.gameOverScreen = document.getElementById('game-over-screen');
     this.startBtn = document.getElementById('start-btn');
     this.restartBtn = document.getElementById('restart-btn');
-    this.reviveBtn = document.getElementById('revive-btn');
+    this.lifeSaverScreen = document.getElementById('life-saver-screen');
+    this.rescueYesBtn = document.getElementById('rescue-yes-btn');
+    this.rescueNoBtn = document.getElementById('rescue-no-btn');
     this.finalScore = document.getElementById('final-score');
     this.finalCoins = document.getElementById('final-coins');
     this.highScoreVal = document.getElementById('high-score-val');
@@ -196,7 +198,8 @@ class GameEngine {
     // Click/Touch Actions
     this.startBtn.addEventListener('click', () => this.startGame());
     this.restartBtn.addEventListener('click', () => this.startGame());
-    this.reviveBtn.addEventListener('click', () => this.reviveGame());
+    this.rescueYesBtn.addEventListener('click', () => this.reviveGame());
+    this.rescueNoBtn.addEventListener('click', () => this.confirmGiveUp());
     this.mobileSwapBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       this.swapBalloons();
@@ -386,6 +389,9 @@ class GameEngine {
     this.startScreen.classList.add('hidden');
     this.gameOverScreen.classList.add('hidden');
     this.pauseScreen.classList.add('hidden');
+    if (this.lifeSaverScreen) {
+      this.lifeSaverScreen.classList.add('hidden');
+    }
     this.hud.classList.remove('hidden');
     
     if (this.isTouchDevice) {
@@ -532,6 +538,19 @@ class GameEngine {
 
   // Update Game Logic
   update(dt) {
+    if (this.state === 'REVIVE_PROMPT') {
+      this.rescueCountdownVal -= dt;
+      const countInt = Math.ceil(this.rescueCountdownVal);
+      const countdownElem = document.getElementById('rescue-countdown');
+      if (countdownElem) {
+        countdownElem.innerText = Math.max(0, countInt).toString();
+      }
+      if (this.rescueCountdownVal <= 0) {
+        this.confirmGiveUp();
+      }
+      return;
+    }
+
     // Decrement power-up active timers
     if (this.magnetTimer > 0) {
       this.magnetTimer = Math.max(0, this.magnetTimer - dt);
@@ -632,7 +651,7 @@ class GameEngine {
           balloon.alive = false;
           // Check if game over (all balloons dead)
           if (this.balloons.every(b => !b.alive)) {
-            this.triggerGameOver();
+            this.triggerLifeSaverPrompt();
           }
         }
         return;
@@ -1298,6 +1317,49 @@ class GameEngine {
     this.ctx.quadraticCurveTo(x, y, x + r, y);
   }
 
+  triggerLifeSaverPrompt() {
+    this.state = 'REVIVE_PROMPT';
+    window.audioManager.stopMusic();
+    window.audioManager.stopUFOHum();
+    
+    // Clear keyboard inputs so player doesn't move or swap balloons
+    this.keys = {};
+    
+    // Set up UI values
+    const coinsVal = document.getElementById('rescue-coins-val');
+    if (coinsVal) {
+      coinsVal.innerText = this.coins;
+    }
+    
+    if (this.rescueYesBtn) {
+      if (this.coins >= 300) {
+        this.rescueYesBtn.disabled = false;
+        this.rescueYesBtn.innerText = 'Yes, Revive (300 Coins)';
+      } else {
+        this.rescueYesBtn.disabled = true;
+        this.rescueYesBtn.innerText = 'Need 300 Coins';
+      }
+    }
+
+    // Reset countdown timer
+    this.rescueCountdownVal = 10.0;
+    const countdownElem = document.getElementById('rescue-countdown');
+    if (countdownElem) {
+      countdownElem.innerText = '10';
+    }
+
+    // Show prompt screen, hide HUD
+    this.hud.classList.add('hidden');
+    this.mobileControls.classList.add('hidden');
+    this.pauseBtn.classList.add('hidden-control');
+    if (this.lifeSaverScreen) {
+      this.lifeSaverScreen.classList.remove('hidden');
+    }
+    
+    // Play warning alert SFX
+    window.audioManager.playUFOWarning();
+  }
+
   triggerGameOver() {
     this.state = 'GAMEOVER';
     window.audioManager.stopMusic();
@@ -1314,17 +1376,6 @@ class GameEngine {
     // Set UI Screen Stats
     this.finalScore.innerText = this.score;
     this.finalCoins.innerText = this.coins;
-
-    // Configure revive button state based on coin count
-    if (this.reviveBtn) {
-      if (this.coins >= 300) {
-        this.reviveBtn.disabled = false;
-        this.reviveBtn.innerText = `Revive (300 Coins)`;
-      } else {
-        this.reviveBtn.disabled = true;
-        this.reviveBtn.innerText = `Revive (Need 300 Coins)`;
-      }
-    }
     
     // Show GameOver Screen
     this.hud.classList.add('hidden');
@@ -1334,7 +1385,7 @@ class GameEngine {
   }
 
   reviveGame() {
-    if (this.state !== 'GAMEOVER') return;
+    if (this.state !== 'REVIVE_PROMPT') return;
     if (this.coins < 300) return;
 
     // Deduct revive cost
@@ -1382,8 +1433,10 @@ class GameEngine {
     // Return to playing state
     this.state = 'PLAYING';
     
-    // Hide game over screen and show HUD controls
-    this.gameOverScreen.classList.add('hidden');
+    // Hide life saver screen and show HUD controls
+    if (this.lifeSaverScreen) {
+      this.lifeSaverScreen.classList.add('hidden');
+    }
     this.hud.classList.remove('hidden');
     this.pauseBtn.classList.remove('hidden-control');
     if (this.isTouchDevice) {
@@ -1393,6 +1446,18 @@ class GameEngine {
     // Resume BGM and play pickup sound
     window.audioManager.startMusic();
     window.audioManager.playPowerUpCollect();
+  }
+
+  confirmGiveUp() {
+    if (this.state !== 'REVIVE_PROMPT') return;
+    
+    // Hide Life Saver Screen
+    if (this.lifeSaverScreen) {
+      this.lifeSaverScreen.classList.add('hidden');
+    }
+    
+    // Transition to the actual Game Over state
+    this.triggerGameOver();
   }
 
   // Canvas Drawing Routine

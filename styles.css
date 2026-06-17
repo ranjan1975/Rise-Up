@@ -606,3 +606,33 @@ body.night-mode {
   display: none !important;
 }
 
+/* Life Saver / Continue Rescue styles */
+.rescue-card {
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  box-shadow: 0 0 35px rgba(16, 185, 129, 0.25) !important;
+}
+
+#game-container.night-mode .rescue-card {
+  border: 1px solid rgba(0, 240, 255, 0.4);
+  box-shadow: 0 0 35px rgba(0, 240, 255, 0.25) !important;
+}
+
+.rescue-icon {
+  font-size: 44px;
+  margin-bottom: 12px;
+  animation: pulse-alert 1.2s infinite ease-in-out;
+  display: inline-block;
+}
+
+@keyframes pulse-alert {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
