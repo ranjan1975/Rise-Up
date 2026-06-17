@@ -591,13 +591,7 @@ class GameEngine {
     this.distance += this.scrollSpeed * envDt;
     this.score = Math.max(0, Math.floor(this.distance / 10) + this.coins * 5 - this.scorePenalty);
     
-    // Trigger Autopilot when score increases by 1000 points
-    const currentMilestone = Math.floor(this.score / 1000);
-    const lastMilestone = Math.floor(this.lastAutopilotScore / 1000);
-    if (currentMilestone > lastMilestone && currentMilestone > 0 && this.autopilotTimer <= 0) {
-      this.autopilotTimer = 15.0;
-      window.audioManager.playAutopilotActivate();
-    }
+    // Trigger Autopilot is now managed as a falling power-up, so we only track milestones for level transitions.
     this.lastAutopilotScore = this.score;
     
     // Update Score Board UI
@@ -735,7 +729,7 @@ class GameEngine {
       
       // Cycle through power-up types to guarantee variety and easy testing
       if (!this.powerUpQueue || this.powerUpQueue.length === 0) {
-        this.powerUpQueue = ['storm', 'shield', 'magnet', 'freeze'];
+        this.powerUpQueue = ['storm', 'shield', 'magnet', 'freeze', 'autopilot'];
         // Shuffle queue
         for (let i = this.powerUpQueue.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
@@ -992,6 +986,13 @@ class GameEngine {
             }
             this.spawnCoinSpark(p.x, p.y, 'STORM!', '#94a3b8');
             this.spawnSparkles(p.x, p.y, '#00f0ff', 12, 4, 150);
+          } else if (p.type === 'autopilot') {
+            this.autopilotTimer = 15.0;
+            if (window.audioManager) {
+              window.audioManager.playAutopilotActivate();
+            }
+            this.spawnCoinSpark(p.x, p.y, 'AUTO-PILOT!', '#22c55e');
+            this.spawnSparkles(p.x, p.y, '#22c55e', 12, 4, 150);
           }
 
           this.powerUps.splice(i, 1);
@@ -1505,6 +1506,9 @@ class GameEngine {
       } else if (p.type === 'storm') {
         glowColor = 'rgba(0, 240, 255, 0.4)';
         mainColor = '#94a3b8';
+      } else if (p.type === 'autopilot') {
+        glowColor = 'rgba(34, 197, 94, 0.4)';
+        mainColor = '#22c55e';
       }
       
       // Draw outer glowing bubble container
@@ -1612,6 +1616,31 @@ class GameEngine {
         this.ctx.lineTo(-3, 8);
         this.ctx.lineTo(2, 8);
         this.ctx.lineTo(-1, 14);
+        this.ctx.stroke();
+      } else if (p.type === 'autopilot') {
+        // Draw a cute green robot head / android symbol
+        this.ctx.fillStyle = '#22c55e';
+        this.ctx.strokeStyle = '#22c55e';
+        this.ctx.lineWidth = 1.5;
+
+        // Head box
+        this.ctx.beginPath();
+        this.ctx.roundRect(-p.size * 0.45, -p.size * 0.3, p.size * 0.9, p.size * 0.6, 3);
+        this.ctx.fill();
+
+        // Eyes (black dots or holes)
+        this.ctx.fillStyle = '#0f172a'; // glassy background dark color
+        this.ctx.beginPath();
+        this.ctx.arc(-p.size * 0.2, -p.size * 0.05, 1.8, 0, Math.PI * 2);
+        this.ctx.arc(p.size * 0.2, -p.size * 0.05, 1.8, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Antennas
+        this.ctx.beginPath();
+        this.ctx.moveTo(-p.size * 0.25, -p.size * 0.3);
+        this.ctx.lineTo(-p.size * 0.38, -p.size * 0.55);
+        this.ctx.moveTo(p.size * 0.25, -p.size * 0.3);
+        this.ctx.lineTo(p.size * 0.38, -p.size * 0.55);
         this.ctx.stroke();
       }
       
