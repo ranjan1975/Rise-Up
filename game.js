@@ -115,9 +115,9 @@ class GameEngine {
     
     this.totalCoins = parseInt(localStorage.getItem('sky_shield_total_coins') || '0');
     this.ownedItems = JSON.parse(localStorage.getItem('sky_shield_owned_items') || '["default", "none"]');
-    this.equippedSkin = localStorage.getItem('sky_shield_equipped_skin') || 'default';
-    this.equippedTrail = localStorage.getItem('sky_shield_equipped_trail') || 'none';
-    this.equippedAttachment = localStorage.getItem('sky_shield_equipped_attach') || 'none';
+    this.equippedSkin = 'default';
+    this.equippedTrail = 'none';
+    this.equippedAttachment = 'none';
     
     this.trailParticles = [];
     this.trailSpawnTimer = 0;
