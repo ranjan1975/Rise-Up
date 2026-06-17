@@ -17,7 +17,7 @@ class SoundManager {
     this.ufoPath = 'UFO Descent.mp3';
     this.thunderPath = 'Thunder Clap.mp3';
     this.birdPaths = ['Bird1.mp3', 'Bird2.mp3', 'Bird3.mp3'];
-    this.celebrationPath = 'Celebration.wav';
+    this.celebrationPath = 'BIG SCORE.wav';
     
     this.audioDay = null;
     this.audioNight = null;
