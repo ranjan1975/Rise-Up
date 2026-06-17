@@ -578,6 +578,7 @@ class GameEngine {
     window.audioManager.setUfoActive(false);
     window.audioManager.setRainMode(false);
     window.audioManager.setTurboMode(false);
+    window.audioManager.setCelebrationMode(false);
     window.audioManager.startMusic();
     this.pauseBtn.classList.remove('hidden-control');
     
@@ -865,6 +866,9 @@ class GameEngine {
         if (activeBalloon) {
           activeBalloon.radius = 26; // Reset size back to normal
         }
+        if (window.audioManager) {
+          window.audioManager.setCelebrationMode(false);
+        }
       }
       return;
     }
@@ -878,6 +882,9 @@ class GameEngine {
       this.coinBags = [];
       this.powerUps = [];
       this.birds = [];
+      if (window.audioManager) {
+        window.audioManager.setCelebrationMode(true);
+      }
       
       const targetX = this.virtualWidth / 2;
       const targetY = this.virtualHeight / 2;

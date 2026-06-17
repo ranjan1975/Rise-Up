@@ -12,20 +12,22 @@ class SoundManager {
     this.isRainActive = false;
     this.isMuted = false;
     
-    // Audio elements (pre-configured paths)
     this.dayPath = 'Balloon Drift.mp3';
     this.nightPath = 'Moonlit Balloon Loop.mp3';
     this.ufoPath = 'UFO Descent.mp3';
     this.thunderPath = 'Thunder Clap.mp3';
     this.birdPaths = ['Bird1.mp3', 'Bird2.mp3', 'Bird3.mp3'];
+    this.celebrationPath = 'Celebration.aif';
     
     this.audioDay = null;
     this.audioNight = null;
     this.audioUfo = null;
     this.audioThunder = null;
     this.audioBirds = [];
+    this.audioCelebration = null;
     this.currentAudio = null;
     this.isTurboActive = false;
+    this.isCelebrationActive = false;
   }
 
   // Initialize Audio Context on first user interaction (browser security requirement)
@@ -93,6 +95,24 @@ class SoundManager {
       });
     }
     
+    if (!this.audioCelebration) {
+      this.audioCelebration = new Audio(this.celebrationPath);
+      this.audioCelebration.preload = 'auto';
+      this.audioCelebration.loop = true;
+      this.audioCelebration.volume = 0.35;
+      
+      // Mobile Autoplay unlock
+      const unlock = () => {
+        this.audioCelebration.play().then(() => {
+          this.audioCelebration.pause();
+          this.audioCelebration.currentTime = 0;
+        }).catch(err => {
+          console.warn("Mobile unlock skipped/blocked for:", this.celebrationPath, err);
+        });
+      };
+      unlock();
+    }
+    
     this.updateVolumes();
   }
 
@@ -131,6 +151,9 @@ class SoundManager {
       this.audioBirds.forEach(audio => {
         audio.volume = this.isMuted ? 0 : 0.22;
       });
+    }
+    if (this.audioCelebration) {
+      this.audioCelebration.volume = this.isMuted ? 0 : 0.35;
     }
   }
 
@@ -497,7 +520,9 @@ class SoundManager {
     this.init();
     
     let targetAudio = this.audioDay;
-    if (this.isUfoActive) {
+    if (this.isCelebrationActive) {
+      targetAudio = this.audioCelebration;
+    } else if (this.isUfoActive) {
       targetAudio = this.audioUfo;
     } else if (this.isNightMode) {
       targetAudio = this.audioNight;
@@ -558,6 +583,13 @@ class SoundManager {
     this.isMusicPlaying = false;
     if (this.currentAudio) {
       this.currentAudio.pause();
+    }
+  }
+
+  setCelebrationMode(active) {
+    this.isCelebrationActive = active;
+    if (this.isMusicPlaying) {
+      this.playCurrentBgm();
     }
   }
 
