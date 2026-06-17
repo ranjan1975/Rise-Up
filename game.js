@@ -1124,7 +1124,7 @@ class GameEngine {
             y: -40,
             vx: vx,
             vy: vy,
-            size: type === 'debris' ? 14.4 : 17.6,
+            size: type === 'debris' ? 10.5 : 17.6,
             waveOffset: Math.random() * Math.PI * 2,
             angle: 0
           });
@@ -1197,7 +1197,7 @@ class GameEngine {
           y: bird.y + 8,
           vx: 0,
           vy: 160,
-          size: 11.2,
+          size: 8.0,
           waveOffset: Math.random() * Math.PI * 2,
           angle: 0
         });
