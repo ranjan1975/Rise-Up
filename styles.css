@@ -880,13 +880,40 @@ body.night-mode {
   gap: 8px;
   width: 100%;
   box-sizing: border-box;
-  transition: border-color 0.2s, background 0.2s;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+.shop-item-card:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 #game-container.night-mode .shop-item-card {
   border-color: var(--night-glass-border);
   background: rgba(15, 23, 42, 0.25);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+#game-container.night-mode .shop-item-card:hover {
+  background: rgba(15, 23, 42, 0.55);
+  border-color: rgba(0, 240, 255, 0.25);
+  box-shadow: 0 4px 15px rgba(0, 240, 255, 0.15);
+}
+
+/* Active/Equipped card highlight */
+.shop-item-card.active {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.08);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+}
+
+#game-container.night-mode .shop-item-card.active {
+  border-color: var(--night-accent);
+  background: rgba(0, 240, 255, 0.05);
+  box-shadow: 0 4px 15px rgba(0, 240, 255, 0.2);
 }
 
 .item-info-row {
@@ -955,13 +982,11 @@ body.night-mode {
 }
 
 .shop-item-btn:hover {
-  transform: translateY(-1px);
   background: rgba(255, 255, 255, 0.22);
 }
 
 #game-container.night-mode .shop-item-btn:hover {
   background: rgba(15, 23, 42, 0.75);
-  box-shadow: 0 0 8px rgba(0, 240, 255, 0.1);
 }
 
 /* Equipped/Active State */

@@ -115,9 +115,9 @@ class GameEngine {
     
     this.totalCoins = parseInt(localStorage.getItem('sky_shield_total_coins') || '0');
     this.ownedItems = JSON.parse(localStorage.getItem('sky_shield_owned_items') || '["default", "none"]');
-    this.equippedSkin = 'default';
-    this.equippedTrail = 'none';
-    this.equippedAttachment = 'none';
+    this.equippedSkin = localStorage.getItem('sky_shield_equipped_skin') || 'default';
+    this.equippedTrail = localStorage.getItem('sky_shield_equipped_trail') || 'none';
+    this.equippedAttachment = localStorage.getItem('sky_shield_equipped_attach') || 'none';
     
     this.trailParticles = [];
     this.trailSpawnTimer = 0;
@@ -202,12 +202,16 @@ class GameEngine {
     });
 
     // 2. Item purchase/equip logic
-    this.shopItemBtns.forEach(btn => {
-      btn.addEventListener('pointerdown', (e) => {
+    const shopItemCards = document.querySelectorAll('.shop-item-card');
+    shopItemCards.forEach(card => {
+      card.addEventListener('pointerdown', (e) => {
         e.stopPropagation();
-        const itemId = btn.dataset.id;
-        const category = btn.dataset.category || 'skins';
-        this.buyOrEquipItem(itemId, category);
+        const btn = card.querySelector('.shop-item-btn');
+        if (btn) {
+          const itemId = btn.dataset.id;
+          const category = btn.dataset.category || 'skins';
+          this.buyOrEquipItem(itemId, category);
+        }
       });
     });
 
@@ -277,6 +281,7 @@ class GameEngine {
       
       // Reset classes
       btn.classList.remove('active', 'owned-buy', 'disabled-buy');
+      if (parentCard) parentCard.classList.remove('active');
 
       // Check if equipped
       const isEquipped = (this.equippedSkin === itemId || this.equippedTrail === itemId || this.equippedAttachment === itemId);
@@ -284,6 +289,7 @@ class GameEngine {
       
       if (isEquipped) {
         btn.classList.add('active');
+        if (parentCard) parentCard.classList.add('active');
         btn.innerText = 'Equipped';
         if (priceSpan) priceSpan.style.display = 'none'; // Hide price on card when equipped
       } else if (isOwned) {
@@ -300,7 +306,8 @@ class GameEngine {
           priceSpan.innerText = itemId === 'default' || itemId === 'none' ? 'Free' : `${price} 🪙`;
         }
         
-        if (this.totalCoins < price) {
+        const combinedCoins = this.totalCoins + this.coins;
+        if (combinedCoins < price) {
           btn.classList.add('disabled-buy');
         }
       }
@@ -308,7 +315,7 @@ class GameEngine {
 
     // Also sync standard coin indicators
     if (this.shopCoinsVal) {
-      this.shopCoinsVal.innerText = this.totalCoins;
+      this.shopCoinsVal.innerText = this.totalCoins + this.coins;
     }
     if (this.coinVal) {
       this.coinVal.innerText = this.coins;
@@ -350,8 +357,15 @@ class GameEngine {
     } else {
       // Try to buy the item
       const price = prices[itemId] || 0;
-      if (this.totalCoins >= price) {
-        this.totalCoins -= price;
+      const combinedCoins = this.totalCoins + this.coins;
+      if (combinedCoins >= price) {
+        if (this.totalCoins >= price) {
+          this.totalCoins -= price;
+        } else {
+          const remainder = price - this.totalCoins;
+          this.totalCoins = 0;
+          this.coins -= remainder;
+        }
         this.ownedItems.push(itemId);
         
         // Save state
@@ -1642,7 +1656,7 @@ class GameEngine {
     this.ctx.quadraticCurveTo(x + w, y, x + w, y + r);
     this.ctx.lineTo(x + w, y + h - r);
     this.ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-    this.ctx.lineTo(x + r, y + h - r);
+    this.ctx.lineTo(x + r, y + h);
     this.ctx.quadraticCurveTo(x, y + h, x, y + h - r);
     this.ctx.lineTo(x, y + r);
     this.ctx.quadraticCurveTo(x, y, x + r, y);
