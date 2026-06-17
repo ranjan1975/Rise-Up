@@ -801,7 +801,7 @@ class GameEngine {
 
   // Game Loop
   loop(time) {
-    if (this.state !== 'PLAYING' && this.state !== 'PAUSED' && this.state !== 'REVIVE_PROMPT') {
+    if (this.state !== 'PLAYING' && this.state !== 'PAUSED' && this.state !== 'REVIVE_PROMPT' && this.state !== 'CELEBRATION') {
       this.isLoopRunning = false;
       return;
     }
@@ -809,7 +809,7 @@ class GameEngine {
     const dt = (time - this.lastTime) / 1000;
     this.lastTime = time;
     
-    if (this.state === 'PLAYING' || this.state === 'REVIVE_PROMPT') {
+    if (this.state === 'PLAYING' || this.state === 'REVIVE_PROMPT' || this.state === 'CELEBRATION') {
       // Pause updates if the accessories shop is open during gameplay
       if (this.state === 'PLAYING' && this.isShopOpen) {
         // Just draw the paused state, do not update physics/hazards/scrolling
@@ -850,12 +850,12 @@ class GameEngine {
         bird.direction = -Math.sin(bird.orbitAngle) >= 0 ? 1 : -1;
       });
       
-      // Interpolate active balloon position and size to 3x center
+      // Interpolate active balloon position and size to 5x center
       const activeBalloon = this.balloons[this.activeBalloonIdx];
       if (activeBalloon && activeBalloon.alive) {
         activeBalloon.x += (targetX - activeBalloon.x) * 0.08;
         activeBalloon.y += (targetY - activeBalloon.y) * 0.08;
-        activeBalloon.radius += (26 * 3 - activeBalloon.radius) * 0.08;
+        activeBalloon.radius += (26 * 5 - activeBalloon.radius) * 0.08;
       }
       
       this.celebrationTimer -= dt;
@@ -869,8 +869,8 @@ class GameEngine {
       return;
     }
 
-    // Trigger Celebration cutscene on score 2000
-    if (this.score >= 2000 && !this.hasTriggeredCelebration) {
+    // Trigger Celebration cutscene on score 5000
+    if (this.score >= 5000 && !this.hasTriggeredCelebration) {
       this.hasTriggeredCelebration = true;
       this.state = 'CELEBRATION';
       this.celebrationTimer = 10.0;
@@ -887,10 +887,10 @@ class GameEngine {
         const angle = (i * Math.PI * 2) / 6;
         this.birds.push({
           orbitAngle: angle,
-          orbitRadius: 130 + Math.random() * 25, // concentric orbits
+          orbitRadius: 180 + Math.random() * 30, // concentric orbits further out to clear 5x balloon (radius 130)
           orbitSpeed: 1.8 + Math.random() * 0.5,
-          x: targetX + Math.cos(angle) * 140,
-          y: targetY + Math.sin(angle) * 140,
+          x: targetX + Math.cos(angle) * 190,
+          y: targetY + Math.sin(angle) * 190,
           vx: 0,
           vy: 0,
           direction: -Math.sin(angle) >= 0 ? 1 : -1,
@@ -2546,9 +2546,11 @@ class GameEngine {
       this.ctx.restore();
     }
 
-    // 5. Draw Balloons (Foreground Layer)
     this.balloons.forEach((balloon, idx) => {
       if (!balloon.alive || balloon.popping) return;
+      
+      // During celebration, only draw the active balloon
+      if (this.state === 'CELEBRATION' && idx !== this.activeBalloonIdx) return;
       
       this.ctx.save();
       this.ctx.translate(balloon.x, balloon.y);
@@ -2973,7 +2975,7 @@ class GameEngine {
       }
 
       // Draw Autopilot Target-Lock Rings
-      if (idx === this.activeBalloonIdx && this.autopilotTimer > 0) {
+      if (idx === this.activeBalloonIdx && this.autopilotTimer > 0 && this.state !== 'CELEBRATION') {
         this.ctx.save();
         const now = performance.now();
         const pulse = Math.sin(now / 100) * 3;
@@ -3236,7 +3238,7 @@ class GameEngine {
     }
     
     // Time Warp subtle screen overlay
-    if (this.freezeTimer > 0) {
+    if (this.freezeTimer > 0 && this.state !== 'CELEBRATION') {
       this.ctx.save();
       this.ctx.fillStyle = 'rgba(156, 39, 176, 0.08)';
       this.ctx.fillRect(0, 0, this.virtualWidth, this.virtualHeight);
@@ -3244,7 +3246,7 @@ class GameEngine {
     }
 
     // Autopilot Timer Pill (Centered status display)
-    if (this.autopilotTimer > 0) {
+    if (this.autopilotTimer > 0 && this.state !== 'CELEBRATION') {
       this.ctx.save();
       this.ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
       this.ctx.strokeStyle = 'rgba(16, 185, 129, 0.85)';
@@ -3270,7 +3272,7 @@ class GameEngine {
     }
 
     // Autopilot subtle screen overlay & tech matrix lines
-    if (this.autopilotTimer > 0) {
+    if (this.autopilotTimer > 0 && this.state !== 'CELEBRATION') {
       this.ctx.save();
       this.ctx.fillStyle = 'rgba(16, 185, 129, 0.04)';
       this.ctx.fillRect(0, 0, this.virtualWidth, this.virtualHeight);
