@@ -43,6 +43,7 @@ class GameEngine {
     this.scorePenalty = 0;
     this.highScore = parseInt(localStorage.getItem('sky_shield_highscore') || '0');
     this.isNightMode = false;
+    this.isAdvancedMode = false;
     this.nightModeTimer = 0;
     this.dayModeTimer = 0;
     this.nightModeUnlocked = false;
@@ -588,6 +589,8 @@ class GameEngine {
     this.coins = 0;
     this.scorePenalty = 0;
     this.isNightMode = false;
+    this.isAdvancedMode = false;
+    document.getElementById('game-container').classList.remove('advanced-mode');
     this.nightModeTimer = 0;
     this.dayModeTimer = 0;
     this.nightModeUnlocked = false;
@@ -995,22 +998,42 @@ class GameEngine {
     this.scoreVal.innerText = this.score;
     this.coinVal.innerText = this.coins;
 
-    // Handle Day/Night Mode cycles
-    if (this.isNightMode) {
-      this.nightModeTimer += dt;
-      if (this.nightModeTimer >= 120.0) { // Revert back to day mode after 2 minutes
-        this.revertToDayMode();
+    // Check Advanced Mode thresholds
+    if (this.score >= 15000 && this.score < 18000) {
+      if (!this.isAdvancedMode) {
+        this.isAdvancedMode = true;
+        document.getElementById('game-container').classList.add('advanced-mode');
+        // Clear existing hazards and birds to start fresh
+        this.hazards = [];
+        this.birds = [];
       }
-    } else {
-      if (!this.nightModeUnlocked) {
-        if (this.score >= 1000) {
-          this.nightModeUnlocked = true;
-          this.enterNightMode();
+    } else if (this.isAdvancedMode && this.score >= 18000) {
+      this.isAdvancedMode = false;
+      document.getElementById('game-container').classList.remove('advanced-mode');
+      // Revert back to default mode (day mode)
+      this.revertToDayMode();
+      // Clear advanced hazards
+      this.hazards = [];
+    }
+
+    // Handle Day/Night Mode cycles (suspended during advanced mode)
+    if (!this.isAdvancedMode) {
+      if (this.isNightMode) {
+        this.nightModeTimer += dt;
+        if (this.nightModeTimer >= 120.0) { // Revert back to day mode after 2 minutes
+          this.revertToDayMode();
         }
       } else {
-        this.dayModeTimer += dt;
-        if (this.dayModeTimer >= 120.0) { // Enter night mode again after 2 minutes
-          this.enterNightMode();
+        if (!this.nightModeUnlocked) {
+          if (this.score >= 1000) {
+            this.nightModeUnlocked = true;
+            this.enterNightMode();
+          }
+        } else {
+          this.dayModeTimer += dt;
+          if (this.dayModeTimer >= 120.0) { // Enter night mode again after 2 minutes
+            this.enterNightMode();
+          }
         }
       }
     }
@@ -1156,7 +1179,7 @@ class GameEngine {
 
     // Spawn Hazards (Poop, Debris, Asteroids) - Disabled when UFO is present
     this.spawnTimers.hazard += envDt;
-    const hazardSpawnInterval = this.isNightMode ? 0.9 : 1.5; // Faster spawning at night
+    const hazardSpawnInterval = this.isAdvancedMode ? 0.8 : (this.isNightMode ? 0.9 : 1.5); // Faster spawning at night/advanced level
     if (this.spawnTimers.hazard > hazardSpawnInterval) {
       this.spawnTimers.hazard = 0;
       
@@ -1168,7 +1191,18 @@ class GameEngine {
         let vx = 0;
         
         // Difficulty splits
-        if (this.isNightMode) {
+        if (this.isAdvancedMode) {
+          const rand = Math.random();
+          if (rand > 0.5) {
+            type = 'fireball';
+            vy = 280 + Math.random() * 60;
+            vx = (Math.random() - 0.5) * 60;
+          } else {
+            type = 'ghost';
+            vy = 120 + Math.random() * 40;
+            vx = 0;
+          }
+        } else if (this.isNightMode) {
           if (randType > 0.6) {
             type = 'asteroid';
             vy = 380;
@@ -1209,7 +1243,7 @@ class GameEngine {
             y: -40,
             vx: vx,
             vy: vy,
-            size: type === 'debris' ? 10.5 : 17.6,
+            size: type === 'debris' ? 10.5 : (type === 'fireball' ? 13.0 : (type === 'ghost' ? 15.0 : 17.6)),
             waveOffset: Math.random() * Math.PI * 2,
             angle: 0
           });
@@ -1310,10 +1344,20 @@ class GameEngine {
         // Zig-zag wave motion
         h.waveOffset += 4 * envDt;
         h.x += Math.sin(h.waveOffset) * 70 * envDt;
+      } else if (h.type === 'ghost') {
+        // Gentle swaying float
+        h.waveOffset += 2.5 * envDt;
+        h.x += Math.sin(h.waveOffset) * 65 * envDt;
+      } else if (h.type === 'fireball') {
+        if (!h.trail) h.trail = [];
+        h.trail.push({ x: h.x, y: h.y });
+        if (h.trail.length > 8) {
+          h.trail.shift();
+        }
       }
       h.x += h.vx * envDt;
       h.y += h.vy * envDt;
-      h.angle += 2 * envDt; // Rotate asteroids and debris
+      h.angle += 2 * envDt; // Rotate asteroids, debris, fireballs
     });
 
     // Check Hazard Collisions
@@ -2485,6 +2529,74 @@ class GameEngine {
         this.ctx.arc(-h.size * 0.4, h.size * 0.2, h.size * 0.2, 0, Math.PI * 2);
         this.ctx.arc(h.size * 0.3, -h.size * 0.3, h.size * 0.15, 0, Math.PI * 2);
         this.ctx.fill();
+      } else if (h.type === 'fireball') {
+        // Fireball hot plasma core
+        const radGrd = this.ctx.createRadialGradient(-h.size * 0.25, -h.size * 0.25, 1, 0, 0, h.size);
+        radGrd.addColorStop(0, '#ffffff'); // White hot core
+        radGrd.addColorStop(0.25, '#fef08a'); // Yellow inner
+        radGrd.addColorStop(0.55, '#f97316'); // Orange
+        radGrd.addColorStop(0.85, '#dc2626'); // Red
+        radGrd.addColorStop(1, 'rgba(220, 38, 38, 0)'); // Fade boundary
+
+        this.ctx.fillStyle = radGrd;
+        this.ctx.shadowBlur = 20;
+        this.ctx.shadowColor = '#f97316';
+
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, h.size, 0, Math.PI * 2);
+        this.ctx.fill();
+
+      } else if (h.type === 'ghost') {
+        // Scary ghost (face upright)
+        this.ctx.rotate(-h.angle);
+
+        // Body gradient
+        const ghostGrd = this.ctx.createLinearGradient(0, -h.size, 0, h.size);
+        ghostGrd.addColorStop(0, 'rgba(248, 250, 252, 0.95)'); // Pale white head
+        ghostGrd.addColorStop(0.55, 'rgba(186, 230, 253, 0.7)'); // Ethereal cyan body
+        ghostGrd.addColorStop(1, 'rgba(167, 139, 250, 0)'); // Fade tail
+
+        this.ctx.fillStyle = ghostGrd;
+        this.ctx.shadowBlur = 12;
+        this.ctx.shadowColor = 'rgba(0, 240, 255, 0.55)';
+
+        // Draw ghost body path
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, -h.size);
+        // Head and arms
+        this.ctx.bezierCurveTo(h.size * 0.7, -h.size, h.size * 0.8, -h.size * 0.3, h.size * 0.8, 0);
+        this.ctx.bezierCurveTo(h.size * 1.1, h.size * 0.15, h.size * 1.1, h.size * 0.4, h.size * 0.7, h.size * 0.4);
+        
+        // Swaying bottom sheet
+        const wave = Math.sin(performance.now() / 150 + h.waveOffset) * 4.5;
+        this.ctx.lineTo(h.size * 0.5, h.size + wave);
+        this.ctx.quadraticCurveTo(h.size * 0.25, h.size - 4 + wave, 0, h.size + wave);
+        this.ctx.quadraticCurveTo(-h.size * 0.25, h.size - 4 + wave, -h.size * 0.5, h.size + wave);
+        
+        this.ctx.lineTo(-h.size * 0.7, h.size * 0.4);
+        this.ctx.bezierCurveTo(-h.size * 1.1, h.size * 0.4, -h.size * 1.1, h.size * 0.15, -h.size * 0.8, 0);
+        this.ctx.bezierCurveTo(-h.size * 0.8, -h.size * 0.3, -h.size * 0.7, -h.size, 0, -h.size);
+        this.ctx.closePath();
+        this.ctx.fill();
+
+        // Glowing red eyes
+        this.ctx.fillStyle = '#ef4444';
+        this.ctx.shadowBlur = 10;
+        this.ctx.shadowColor = '#ef4444';
+        this.ctx.beginPath();
+        this.ctx.arc(-h.size * 0.22, -h.size * 0.35, h.size * 0.11, 0, Math.PI * 2);
+        this.ctx.arc(h.size * 0.22, -h.size * 0.35, h.size * 0.11, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Mouth (open scary scream)
+        this.ctx.fillStyle = '#0f172a';
+        this.ctx.shadowBlur = 0; // Clear eye glow
+        this.ctx.save();
+        this.ctx.scale(0.7, 1);
+        this.ctx.beginPath();
+        this.ctx.arc(0, -h.size * 0.05, h.size * 0.18, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.restore();
       }
 
       this.ctx.restore();
@@ -2516,6 +2628,36 @@ class GameEngine {
         this.ctx.stroke();
         this.ctx.restore();
       } 
+      else if (h.type === 'fireball') {
+        if (h.trail && h.trail.length > 0) {
+          this.ctx.save();
+          this.ctx.globalCompositeOperation = 'destination-over';
+          
+          h.trail.forEach((pt, index) => {
+            const opacity = (index + 1) / h.trail.length * 0.55;
+            const radius = h.size * (0.3 + 0.7 * (index + 1) / h.trail.length);
+            
+            // Fire colors: red -> orange -> yellow
+            let color;
+            if (index < h.trail.length / 3) {
+              color = `rgba(239, 68, 68, ${opacity})`;
+            } else if (index < h.trail.length * 2 / 3) {
+              color = `rgba(249, 115, 22, ${opacity})`;
+            } else {
+              color = `rgba(253, 224, 71, ${opacity})`;
+            }
+            
+            this.ctx.fillStyle = color;
+            this.ctx.shadowBlur = 12;
+            this.ctx.shadowColor = 'rgba(249, 115, 22, 0.4)';
+            this.ctx.beginPath();
+            this.ctx.arc(pt.x, pt.y, radius, 0, Math.PI * 2);
+            this.ctx.fill();
+          });
+          
+          this.ctx.restore();
+        }
+      }
       else if (h.type === 'ufo_bomb') {
         this.ctx.save();
         this.ctx.globalCompositeOperation = 'destination-over';

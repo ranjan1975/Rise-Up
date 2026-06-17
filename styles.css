@@ -15,6 +15,13 @@
   --night-glass-bg: rgba(15, 23, 42, 0.5);
   --night-glass-border: rgba(255, 255, 255, 0.15);
   --night-accent: #00f0ff;
+
+  /* Advanced Theme Palette (Score 15000 - 18000) */
+  --advanced-bg-gradient: linear-gradient(to top, #110202, #290305, #4c0307);
+  --advanced-text: #fecaca;
+  --advanced-glass-bg: rgba(15, 23, 42, 0.65);
+  --advanced-glass-border: rgba(239, 68, 68, 0.25);
+  --advanced-accent: #ef4444;
   
   /* UI Glows and Shadows */
   --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
@@ -70,6 +77,22 @@ body.night-mode {
 #game-container.night-mode {
   background: var(--night-bg-gradient);
   box-shadow: 0 0 50px rgba(0, 240, 255, 0.15);
+}
+
+#game-container.advanced-mode {
+  background: var(--advanced-bg-gradient);
+  box-shadow: 0 0 50px rgba(239, 68, 68, 0.25);
+}
+
+#game-container.advanced-mode .hud-item {
+  background: var(--advanced-glass-bg);
+  border-color: var(--advanced-glass-border);
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.15);
+}
+
+#game-container.advanced-mode .hud-value {
+  color: var(--advanced-accent);
+  text-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
 }
 
 /* Canvas styling */
