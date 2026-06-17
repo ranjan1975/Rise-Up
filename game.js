@@ -122,6 +122,7 @@ class GameEngine {
     this.trailParticles = [];
     this.trailSpawnTimer = 0;
     
+    this.isShopOpen = false;
     this.initShop();
   }
 
@@ -215,15 +216,38 @@ class GameEngine {
       });
     });
 
-    // 3. Mobile touch/click toggle logic
+    // 3. Hover and mobile touch/click toggle logic
+    const setShopOpen = (isOpen) => {
+      this.isShopOpen = isOpen;
+      if (isOpen) {
+        this.shopSidebar.classList.add('expanded');
+      } else {
+        this.shopSidebar.classList.remove('expanded');
+      }
+    };
+
+    this.shopSidebar.addEventListener('pointerenter', (e) => {
+      if (e.pointerType === 'mouse') {
+        setShopOpen(true);
+      }
+    });
+
+    this.shopSidebar.addEventListener('pointerleave', (e) => {
+      if (e.pointerType === 'mouse') {
+        setShopOpen(false);
+      }
+    });
+
     this.shopSidebar.addEventListener('pointerdown', (e) => {
       e.stopPropagation(); // Prevent canvas dragging
-      this.shopSidebar.classList.add('expanded');
+      if (e.pointerType === 'touch') {
+        setShopOpen(true);
+      }
     });
 
     document.addEventListener('pointerdown', (e) => {
-      if (this.shopSidebar.classList.contains('expanded') && !this.shopSidebar.contains(e.target)) {
-        this.shopSidebar.classList.remove('expanded');
+      if (this.isShopOpen && !this.shopSidebar.contains(e.target)) {
+        setShopOpen(false);
       }
     });
 
@@ -596,6 +620,10 @@ class GameEngine {
     if (this.lifeSaverScreen) {
       this.lifeSaverScreen.classList.add('hidden');
     }
+    this.isShopOpen = false;
+    if (this.shopSidebar) {
+      this.shopSidebar.classList.remove('expanded');
+    }
     // We do NOT hide the shopSidebar here, as it acts as a sliding shelf during gameplay
     this.hud.classList.remove('hidden');
     
@@ -740,7 +768,12 @@ class GameEngine {
     this.lastTime = time;
     
     if (this.state === 'PLAYING' || this.state === 'REVIVE_PROMPT') {
-      this.update(dt);
+      // Pause updates if the accessories shop is open during gameplay
+      if (this.state === 'PLAYING' && this.isShopOpen) {
+        // Just draw the paused state, do not update physics/hazards/scrolling
+      } else {
+        this.update(dt);
+      }
     }
     this.draw();
     
