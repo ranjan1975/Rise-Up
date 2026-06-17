@@ -122,7 +122,8 @@ class GameEngine {
     this.trailParticles = [];
     this.trailSpawnTimer = 0;
     this.turboTimer = 0;
-    this.hasTriggeredCelebration = false;
+    this.lastCelebrationMilestone = 0;
+    this.hasPlayedCelebrationMusic = false;
     this.celebrationTimer = 0;
     
     this.isShopOpen = false;
@@ -595,7 +596,8 @@ class GameEngine {
     this.freezeTimer = 0;
     this.autopilotTimer = 0;
     this.turboTimer = 0;
-    this.hasTriggeredCelebration = false;
+    this.lastCelebrationMilestone = 0;
+    this.hasPlayedCelebrationMusic = false;
     this.celebrationTimer = 0;
     this.lastAutopilotScore = 0;
     this.rainTimer = 0;
@@ -857,6 +859,15 @@ class GameEngine {
         activeBalloon.x += (targetX - activeBalloon.x) * 0.08;
         activeBalloon.y += (targetY - activeBalloon.y) * 0.08;
         activeBalloon.radius += (26 * 5 - activeBalloon.radius) * 0.08;
+        
+        // Trigger BGM exactly when balloon has arrived in the middle of the screen
+        const dist = Math.hypot(activeBalloon.x - targetX, activeBalloon.y - targetY);
+        if (dist < 15 && !this.hasPlayedCelebrationMusic) {
+          this.hasPlayedCelebrationMusic = true;
+          if (window.audioManager) {
+            window.audioManager.setCelebrationMode(true);
+          }
+        }
       }
       
       this.celebrationTimer -= dt;
@@ -873,18 +884,17 @@ class GameEngine {
       return;
     }
 
-    // Trigger Celebration cutscene on score 5000
-    if (this.score >= 5000 && !this.hasTriggeredCelebration) {
-      this.hasTriggeredCelebration = true;
+    // Trigger Celebration cutscene on multiples of 5000 (5000, 10000, 15000...)
+    const currentMilestone = Math.floor(this.score / 5000) * 5000;
+    if (currentMilestone > 0 && currentMilestone > this.lastCelebrationMilestone) {
+      this.lastCelebrationMilestone = currentMilestone;
       this.state = 'CELEBRATION';
       this.celebrationTimer = 10.0;
+      this.hasPlayedCelebrationMusic = false;
       this.hazards = [];
       this.coinBags = [];
       this.powerUps = [];
       this.birds = [];
-      if (window.audioManager) {
-        window.audioManager.setCelebrationMode(true);
-      }
       
       const targetX = this.virtualWidth / 2;
       const targetY = this.virtualHeight / 2;
@@ -2735,14 +2745,9 @@ class GameEngine {
           this.ctx.textAlign = 'center';
           this.ctx.textBaseline = 'middle';
           
-          const fontSizeMain = Math.max(9, Math.round(r * 0.12)); // ~16px at 130 radius
-          const fontSizeSub = Math.max(7, Math.round(r * 0.08));  // ~10px at 130 radius
-          
+          const fontSizeMain = Math.max(16, Math.round(r * 0.22)); // Large font for the score digit
           this.ctx.font = `extrabold ${fontSizeMain}px var(--font-family)`;
-          this.ctx.fillText('CELEBRATION TIME!', 0, -r * 0.2);
-          
-          this.ctx.font = `bold ${fontSizeSub}px var(--font-family)`;
-          this.ctx.fillText('YOU REACHED A SCORE OF 5000', 0, r * 0.1);
+          this.ctx.fillText(this.lastCelebrationMilestone.toString(), 0, 0);
           
           this.ctx.restore();
         }
