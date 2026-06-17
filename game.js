@@ -121,6 +121,7 @@ class GameEngine {
     
     this.trailParticles = [];
     this.trailSpawnTimer = 0;
+    this.turboTimer = 0;
     
     this.isShopOpen = false;
     this.initShop();
@@ -574,6 +575,7 @@ class GameEngine {
     window.audioManager.setNightMode(false);
     window.audioManager.setUfoActive(false);
     window.audioManager.setRainMode(false);
+    window.audioManager.setTurboMode(false);
     window.audioManager.startMusic();
     this.pauseBtn.classList.remove('hidden-control');
     
@@ -589,6 +591,7 @@ class GameEngine {
     this.magnetTimer = 0;
     this.freezeTimer = 0;
     this.autopilotTimer = 0;
+    this.turboTimer = 0;
     this.lastAutopilotScore = 0;
     this.rainTimer = 0;
     this.rainbowTimer = 0;
@@ -840,6 +843,14 @@ class GameEngine {
     if (this.autopilotTimer > 0) {
       this.autopilotTimer = Math.max(0, this.autopilotTimer - dt);
     }
+    if (this.turboTimer > 0) {
+      this.turboTimer = Math.max(0, this.turboTimer - dt);
+      if (this.turboTimer === 0) {
+        if (window.audioManager) {
+          window.audioManager.setTurboMode(false);
+        }
+      }
+    }
     
     // Decrement rain and rainbow timers
     if (this.rainTimer > 0) {
@@ -858,7 +869,7 @@ class GameEngine {
       this.rainbowTimer = Math.max(0, this.rainbowTimer - dt);
     }
 
-    const envDt = dt * (this.freezeTimer > 0 ? 0.5 : 1.0);
+    const envDt = dt * (this.freezeTimer > 0 ? 0.5 : 1.0) * (this.turboTimer > 0 ? 3.0 : 1.0);
 
     // Update Raindrops and Lightning during rain phase
     if (this.rainTimer > 0) {
@@ -1030,7 +1041,7 @@ class GameEngine {
       
       // Cycle through power-up types to guarantee variety and easy testing
       if (!this.powerUpQueue || this.powerUpQueue.length === 0) {
-        this.powerUpQueue = ['storm', 'shield', 'magnet', 'freeze', 'autopilot'];
+        this.powerUpQueue = ['storm', 'shield', 'magnet', 'freeze', 'autopilot', 'turbo'];
         // Shuffle queue
         for (let i = this.powerUpQueue.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
@@ -1038,7 +1049,17 @@ class GameEngine {
         }
       }
       
-      const type = this.powerUpQueue.pop();
+      let type = this.powerUpQueue.pop();
+      if (this.turboTimer > 0) {
+        // While turbo is active, skip storm (rain) and autopilot
+        let attempts = 0;
+        while ((type === 'storm' || type === 'autopilot') && attempts < 10) {
+          this.powerUpQueue.unshift(type); // push to bottom of the queue
+          type = this.powerUpQueue.pop();
+          attempts++;
+        }
+      }
+      
       this.powerUps.push({
         type: type,
         x: 40 + Math.random() * (this.virtualWidth - 80),
@@ -1117,7 +1138,7 @@ class GameEngine {
 
     // 5. Update Coin Bags
     this.coinBags.forEach(bag => {
-      if (this.magnetTimer > 0) {
+      if (this.magnetTimer > 0 || this.turboTimer > 0) {
         const activeBalloon = this.balloons[this.activeBalloonIdx];
         if (activeBalloon && activeBalloon.alive && !activeBalloon.popping) {
           const dx = activeBalloon.x - bag.x;
@@ -1186,6 +1207,20 @@ class GameEngine {
 
     // 6. Update Hazards
     this.hazards.forEach(h => {
+      if (this.turboTimer > 0) {
+        const activeBalloon = this.balloons[this.activeBalloonIdx];
+        if (activeBalloon && activeBalloon.alive && !activeBalloon.popping) {
+          const dx = h.x - activeBalloon.x;
+          const dy = h.y - activeBalloon.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < 200 && dist > 1) {
+            const pushForce = 350 * (1 - dist / 200);
+            const angle = Math.atan2(dy, dx);
+            h.x += Math.cos(angle) * pushForce * envDt;
+            h.y += Math.sin(angle) * pushForce * envDt;
+          }
+        }
+      }
       if (h.type === 'poop') {
         // Zig-zag wave motion
         h.waveOffset += 4 * envDt;
@@ -1294,6 +1329,14 @@ class GameEngine {
             }
             this.spawnCoinSpark(p.x, p.y, 'AUTO-PILOT!', '#22c55e');
             this.spawnSparkles(p.x, p.y, '#22c55e', 12, 4, 150);
+          } else if (p.type === 'turbo') {
+            this.turboTimer = 15.0;
+            if (window.audioManager) {
+              window.audioManager.playTurboActivate();
+              window.audioManager.setTurboMode(true);
+            }
+            this.spawnCoinSpark(p.x, p.y, 'TURBO!', '#ef4444');
+            this.spawnSparkles(p.x, p.y, '#ef4444', 16, 5, 200);
           }
 
           this.powerUps.splice(i, 1);
@@ -2032,6 +2075,9 @@ class GameEngine {
       } else if (p.type === 'autopilot') {
         glowColor = 'rgba(34, 197, 94, 0.4)';
         mainColor = '#22c55e';
+      } else if (p.type === 'turbo') {
+        glowColor = 'rgba(239, 68, 68, 0.4)';
+        mainColor = '#ef4444';
       }
       
       // Draw outer glowing bubble container
@@ -2164,6 +2210,21 @@ class GameEngine {
         this.ctx.lineTo(-p.size * 0.38, -p.size * 0.55);
         this.ctx.moveTo(p.size * 0.25, -p.size * 0.3);
         this.ctx.lineTo(p.size * 0.38, -p.size * 0.55);
+        this.ctx.stroke();
+      } else if (p.type === 'turbo') {
+        // Draw a glowing red/orange lightning bolt
+        this.ctx.fillStyle = '#f97316';
+        this.ctx.strokeStyle = '#ef4444';
+        this.ctx.lineWidth = 1.5;
+        this.ctx.beginPath();
+        this.ctx.moveTo(p.size * 0.1, -p.size * 0.55);
+        this.ctx.lineTo(-p.size * 0.35, p.size * 0.05);
+        this.ctx.lineTo(0, p.size * 0.05);
+        this.ctx.lineTo(-p.size * 0.15, p.size * 0.55);
+        this.ctx.lineTo(p.size * 0.35, -p.size * 0.05);
+        this.ctx.lineTo(p.size * 0.05, -p.size * 0.05);
+        this.ctx.closePath();
+        this.ctx.fill();
         this.ctx.stroke();
       }
       
@@ -3030,6 +3091,37 @@ class GameEngine {
       
       this.ctx.textAlign = 'right';
       this.ctx.fillText(`${this.freezeTimer.toFixed(1)}s`, 147, timerY + 13);
+      this.ctx.restore();
+      
+      timerY += 34;
+    }
+
+    // Turbo Timer Pill
+    if (this.turboTimer > 0) {
+      this.ctx.save();
+      this.ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+      this.ctx.strokeStyle = 'rgba(239, 68, 68, 0.85)';
+      this.ctx.lineWidth = 1.8;
+      this.ctx.shadowBlur = 10;
+      this.ctx.shadowColor = '#ef4444';
+      
+      this.ctx.beginPath();
+      this.drawRoundedRect(15, timerY, 145, 26, 13);
+      this.ctx.fill();
+      this.ctx.stroke();
+      
+      this.ctx.shadowBlur = 0;
+      this.ctx.fillStyle = '#ef4444';
+      this.ctx.font = 'bold 12px var(--font-family)';
+      this.ctx.textAlign = 'left';
+      this.ctx.textBaseline = 'middle';
+      
+      const blink = Math.floor(performance.now() / 150) % 2 === 0;
+      const emoji = blink ? '🚀' : '🔥';
+      this.ctx.fillText(`${emoji} TURBO`, 26, timerY + 13);
+      
+      this.ctx.textAlign = 'right';
+      this.ctx.fillText(`${this.turboTimer.toFixed(1)}s`, 147, timerY + 13);
       this.ctx.restore();
       
       timerY += 34;

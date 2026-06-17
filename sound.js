@@ -25,6 +25,7 @@ class SoundManager {
     this.audioThunder = null;
     this.audioBirds = [];
     this.currentAudio = null;
+    this.isTurboActive = false;
   }
 
   // Initialize Audio Context on first user interaction (browser security requirement)
@@ -512,6 +513,7 @@ class SoundManager {
       this.currentAudio = targetAudio;
 
       if (this.isMusicPlaying && this.currentAudio) {
+        this.currentAudio.playbackRate = this.isTurboActive ? 1.5 : 1.0;
         if (this.currentAudio === this.audioUfo) {
           if (this.audioUfo.readyState >= 1) {
             this.audioUfo.currentTime = 30.0;
@@ -529,6 +531,7 @@ class SoundManager {
     } else {
       // Case 2: Same track, check if we need to resume or pause it based on isMusicPlaying
       if (this.currentAudio) {
+        this.currentAudio.playbackRate = this.isTurboActive ? 1.5 : 1.0;
         if (this.isMusicPlaying) {
           if (this.currentAudio.paused) {
             this.currentAudio.play().catch(err => {
@@ -783,6 +786,38 @@ class SoundManager {
     if (this.isMusicPlaying) {
       this.playCurrentBgm();
     }
+  }
+
+  setTurboMode(active) {
+    this.isTurboActive = active;
+    const rate = active ? 1.5 : 1.0;
+    if (this.audioDay) this.audioDay.playbackRate = rate;
+    if (this.audioNight) this.audioNight.playbackRate = rate;
+    if (this.audioUfo) this.audioUfo.playbackRate = rate;
+  }
+
+  playTurboActivate() {
+    this.init();
+    if (!this.ctx || this.isMuted) return;
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sawtooth';
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    // Speeding up sweep (from low pitch to high pitch)
+    osc.frequency.setValueAtTime(100, now);
+    osc.frequency.exponentialRampToValueAtTime(1600, now + 0.8);
+
+    gain.gain.setValueAtTime(0.01, now);
+    gain.gain.linearRampToValueAtTime(0.12, now + 0.4);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+
+    osc.start(now);
+    osc.stop(now + 0.85);
   }
 }
 
