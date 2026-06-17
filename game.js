@@ -2373,27 +2373,92 @@ class GameEngine {
         this.ctx.fill();
         
       } else if (h.type === 'debris') {
-        // Airplane Debris (a grey metallic sheet rivet cargo box)
-        this.ctx.fillStyle = '#64748b';
+        // Spikey Metallic Chrome Plated Ball
+        const size = h.size;
+        const sphereRadius = size * 0.85;
+        const spikeLength = size * 1.5;
+        const spikeBaseWidth = size * 0.22;
+
+        // Shadow/glow properties
         if (this.isNightMode) {
-          this.ctx.shadowBlur = 8;
+          this.ctx.shadowBlur = 12;
           this.ctx.shadowColor = '#00f0ff';
-          this.ctx.strokeStyle = '#00f0ff';
         } else {
-          this.ctx.strokeStyle = '#334155';
+          this.ctx.shadowBlur = 4;
+          this.ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
         }
-        this.ctx.lineWidth = 2;
-        
-        // Draw box with a diagonal stripe
+
+        // Draw 8 metallic spikes radiating from the center
+        this.ctx.save();
+        for (let i = 0; i < 8; i++) {
+          // Light side of the spike (left)
+          this.ctx.fillStyle = this.isNightMode ? '#cbd5e1' : '#f1f5f9';
+          this.ctx.beginPath();
+          this.ctx.moveTo(0, 0);
+          this.ctx.lineTo(-spikeBaseWidth, 0);
+          this.ctx.lineTo(0, -spikeLength);
+          this.ctx.closePath();
+          this.ctx.fill();
+
+          // Dark side of the spike (right)
+          this.ctx.fillStyle = this.isNightMode ? '#1e293b' : '#475569';
+          this.ctx.beginPath();
+          this.ctx.moveTo(0, 0);
+          this.ctx.lineTo(spikeBaseWidth, 0);
+          this.ctx.lineTo(0, -spikeLength);
+          this.ctx.closePath();
+          this.ctx.fill();
+
+          // Outline spike to give clean definition
+          this.ctx.strokeStyle = this.isNightMode ? '#00f0ff' : '#0f172a';
+          this.ctx.lineWidth = 1;
+          this.ctx.beginPath();
+          this.ctx.moveTo(-spikeBaseWidth, 0);
+          this.ctx.lineTo(0, -spikeLength);
+          this.ctx.lineTo(spikeBaseWidth, 0);
+          this.ctx.stroke();
+
+          // Rotate for the next spike (45 degrees)
+          this.ctx.rotate(Math.PI / 4);
+        }
+        this.ctx.restore();
+
+        // Draw the central chrome sphere
+        const chromeGrd = this.ctx.createLinearGradient(
+          -sphereRadius, -sphereRadius,
+          sphereRadius, sphereRadius
+        );
+        // Premium chrome stops simulating reflection of sky and ground with a horizon line
+        chromeGrd.addColorStop(0.0, '#ffffff'); // Specular highlight
+        chromeGrd.addColorStop(0.15, '#e2e8f0'); // Bright silver (sky reflection)
+        chromeGrd.addColorStop(0.44, '#94a3b8'); // Medium silver
+        chromeGrd.addColorStop(0.48, '#334155'); // Dark horizon line top boundary
+        chromeGrd.addColorStop(0.52, '#0f172a'); // Very dark horizon line bottom boundary
+        chromeGrd.addColorStop(0.56, '#1e293b'); // Horizon shadow
+        chromeGrd.addColorStop(0.75, '#cbd5e1'); // Ground reflection
+        chromeGrd.addColorStop(1.0, '#475569'); // Metallic base shadow
+
+        this.ctx.fillStyle = chromeGrd;
+        this.ctx.strokeStyle = this.isNightMode ? '#00f0ff' : '#334155';
+        this.ctx.lineWidth = 1.5;
+
         this.ctx.beginPath();
-        this.ctx.rect(-h.size, -h.size, h.size * 2, h.size * 2);
+        this.ctx.arc(0, 0, sphereRadius, 0, Math.PI * 2);
         this.ctx.fill();
         this.ctx.stroke();
-        
+
+        // Add 3D Glossy highlight overlay on top-left of the sphere
+        const highlightGrd = this.ctx.createRadialGradient(
+          -sphereRadius * 0.35, -sphereRadius * 0.35, 0,
+          -sphereRadius * 0.35, -sphereRadius * 0.35, sphereRadius * 0.5
+        );
+        highlightGrd.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+        highlightGrd.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+        this.ctx.fillStyle = highlightGrd;
         this.ctx.beginPath();
-        this.ctx.moveTo(-h.size, -h.size);
-        this.ctx.lineTo(h.size, h.size);
-        this.ctx.stroke();
+        this.ctx.arc(-sphereRadius * 0.35, -sphereRadius * 0.35, sphereRadius * 0.5, 0, Math.PI * 2);
+        this.ctx.fill();
         
       } else if (h.type === 'asteroid') {
         // Asteroid (Rocky textured sphere with glowing fire trail)
