@@ -314,6 +314,28 @@ body.night-mode {
   transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 8px 16px rgba(16, 185, 129, 0.3);
+}
+
+.btn-success:hover:not(:disabled) {
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 12px 20px rgba(16, 185, 129, 0.4);
+}
+
+.btn-success:active:not(:disabled) {
+  transform: translateY(-1px) scale(0.98);
+}
+
 .btn-primary {
   background: #ff5252;
   color: white;
@@ -337,6 +359,16 @@ body.night-mode {
 
 #game-container.night-mode .btn-primary:hover {
   box-shadow: 0 12px 24px rgba(0, 240, 255, 0.5);
+}
+
+#game-container.night-mode .btn-success {
+  background: linear-gradient(135deg, #00f0ff 0%, #10b981 100%);
+  color: #020617;
+  box-shadow: 0 8px 16px rgba(0, 240, 255, 0.35);
+}
+
+#game-container.night-mode .btn-success:hover:not(:disabled) {
+  box-shadow: 0 12px 24px rgba(0, 240, 255, 0.55);
 }
 
 /* Stats Layout */

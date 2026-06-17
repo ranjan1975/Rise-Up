@@ -17,6 +17,7 @@ class GameEngine {
     this.gameOverScreen = document.getElementById('game-over-screen');
     this.startBtn = document.getElementById('start-btn');
     this.restartBtn = document.getElementById('restart-btn');
+    this.reviveBtn = document.getElementById('revive-btn');
     this.finalScore = document.getElementById('final-score');
     this.finalCoins = document.getElementById('final-coins');
     this.highScoreVal = document.getElementById('high-score-val');
@@ -195,6 +196,7 @@ class GameEngine {
     // Click/Touch Actions
     this.startBtn.addEventListener('click', () => this.startGame());
     this.restartBtn.addEventListener('click', () => this.startGame());
+    this.reviveBtn.addEventListener('click', () => this.reviveGame());
     this.mobileSwapBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       this.swapBalloons();
@@ -1312,12 +1314,85 @@ class GameEngine {
     // Set UI Screen Stats
     this.finalScore.innerText = this.score;
     this.finalCoins.innerText = this.coins;
+
+    // Configure revive button state based on coin count
+    if (this.reviveBtn) {
+      if (this.coins >= 300) {
+        this.reviveBtn.disabled = false;
+        this.reviveBtn.innerText = `Revive (300 Coins)`;
+      } else {
+        this.reviveBtn.disabled = true;
+        this.reviveBtn.innerText = `Revive (Need 300 Coins)`;
+      }
+    }
     
     // Show GameOver Screen
     this.hud.classList.add('hidden');
     this.mobileControls.classList.add('hidden');
     this.pauseBtn.classList.add('hidden-control');
     this.gameOverScreen.classList.remove('hidden');
+  }
+
+  reviveGame() {
+    if (this.state !== 'GAMEOVER') return;
+    if (this.coins < 300) return;
+
+    // Deduct revive cost
+    this.coins -= 300;
+    
+    // Reset balloons: revive active balloons, center them, and add temporary invulnerability shield
+    const centerX = this.virtualWidth / 2;
+    const centerY = this.virtualHeight - 150;
+    
+    this.balloons.forEach((balloon, idx) => {
+      balloon.alive = true;
+      balloon.popping = false;
+      balloon.popTime = 0;
+      balloon.hasShield = true; // Temporary protection shield!
+      
+      if (this.balloons.length > 1) {
+        balloon.x = idx === 0 ? centerX - 35 : centerX + 35;
+      } else {
+        balloon.x = centerX;
+      }
+      balloon.y = centerY;
+    });
+
+    if (this.balloons.length === 0) {
+      this.balloons.push({
+        x: centerX,
+        y: centerY,
+        radius: 26,
+        color: '#ff5252',
+        glowColor: 'rgba(255, 82, 82, 0.4)',
+        name: 'Red',
+        alive: true,
+        floatOffset: 0,
+        floatSpeed: 1.5,
+        popping: false,
+        popTime: 0,
+        hasShield: true
+      });
+    }
+
+    // Clear immediate on-screen falling hazards to give the player a safe window
+    this.hazards = this.hazards.filter(h => h.y > this.virtualHeight * 0.55 || h.y < 0);
+    this.birds = []; // Clear birds to prevent instant poop drops
+
+    // Return to playing state
+    this.state = 'PLAYING';
+    
+    // Hide game over screen and show HUD controls
+    this.gameOverScreen.classList.add('hidden');
+    this.hud.classList.remove('hidden');
+    this.pauseBtn.classList.remove('hidden-control');
+    if (this.isTouchDevice) {
+      this.mobileControls.classList.remove('hidden');
+    }
+
+    // Resume BGM and play pickup sound
+    window.audioManager.startMusic();
+    window.audioManager.playPowerUpCollect();
   }
 
   // Canvas Drawing Routine
