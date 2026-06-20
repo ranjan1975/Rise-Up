@@ -98,6 +98,7 @@ class GameEngine {
     this.dragStartTouchY = 0;
     this.dragStartBalloonX = 0;
     this.dragStartBalloonY = 0;
+    this.dragPointerId = null;
     
     // Event listeners
     this.initEventListeners();
@@ -487,37 +488,56 @@ class GameEngine {
       this.startGame();
     });
 
-    // Touch events for Direct Canvas Dragging
-    this.canvas.addEventListener('touchstart', (e) => {
+    // Pointer events for Direct Canvas Dragging (Mouse & Touch)
+    this.canvas.addEventListener('pointerdown', (e) => {
       if (this.state !== 'PLAYING') return;
-      this.isTouchDevice = true;
-      this.mobileControls.classList.remove('hidden');
       
-      const touch = e.targetTouches[0];
       const activeBalloon = this.balloons[this.activeBalloonIdx];
       if (activeBalloon && activeBalloon.alive && !activeBalloon.popping) {
+        // If it's a mouse click, check if the click target is inside the balloon boundary
+        if (e.pointerType === 'mouse') {
+          if (e.button !== 0) return; // Only allow left mouse button clicks
+          
+          const rect = this.canvas.getBoundingClientRect();
+          const clickX_css = e.clientX - rect.left;
+          const clickY_css = e.clientY - rect.top;
+          const clickX_virtual = clickX_css / this.scaleX;
+          const clickY_virtual = clickY_css / this.scaleY;
+          
+          const dist = Math.hypot(clickX_virtual - activeBalloon.x, clickY_virtual - activeBalloon.y);
+          // Allow 25px visual padding for easier click target hitboxes
+          if (dist > activeBalloon.radius + 25) {
+            return; // Ignore clicks outside the balloon
+          }
+        } else if (e.pointerType === 'touch') {
+          this.isTouchDevice = true;
+          this.mobileControls.classList.remove('hidden');
+        }
+
         this.isDragging = true;
-        this.dragStartTouchX = touch.clientX;
-        this.dragStartTouchY = touch.clientY;
+        this.dragStartTouchX = e.clientX;
+        this.dragStartTouchY = e.clientY;
         this.dragStartBalloonX = activeBalloon.x;
         this.dragStartBalloonY = activeBalloon.y;
-        e.preventDefault(); // Stop page scrolling/bouncing
+        this.dragPointerId = e.pointerId;
+        
+        try {
+          this.canvas.setPointerCapture(e.pointerId);
+        } catch (err) {}
+        
+        e.preventDefault();
       }
-    }, { passive: false });
+    });
 
-    this.canvas.addEventListener('touchmove', (e) => {
+    this.canvas.addEventListener('pointermove', (e) => {
       if (this.state !== 'PLAYING') return;
       
-      if (this.isDragging) {
-        e.preventDefault(); // Stop browser scrolling/panning
-        
-        const touch = e.targetTouches[0];
+      if (this.isDragging && e.pointerId === this.dragPointerId) {
         const activeBalloon = this.balloons[this.activeBalloonIdx];
         if (activeBalloon && activeBalloon.alive && !activeBalloon.popping) {
-          const deltaX_css = touch.clientX - this.dragStartTouchX;
-          const deltaY_css = touch.clientY - this.dragStartTouchY;
+          const deltaX_css = e.clientX - this.dragStartTouchX;
+          const deltaY_css = e.clientY - this.dragStartTouchY;
           
-          // Convert CSS delta to virtual coordinate delta
           const deltaX_virtual = deltaX_css / this.scaleX;
           const deltaY_virtual = deltaY_css / this.scaleY;
           
@@ -529,13 +549,24 @@ class GameEngine {
           activeBalloon.y = Math.max(activeBalloon.radius, Math.min(this.virtualHeight - activeBalloon.radius, activeBalloon.y));
         }
       }
-    }, { passive: false });
-
-    window.addEventListener('touchend', () => {
-      this.isDragging = false;
     });
-    window.addEventListener('touchcancel', () => {
-      this.isDragging = false;
+
+    window.addEventListener('pointerup', (e) => {
+      if (this.isDragging && e.pointerId === this.dragPointerId) {
+        this.isDragging = false;
+        try {
+          this.canvas.releasePointerCapture(e.pointerId);
+        } catch (err) {}
+      }
+    });
+
+    window.addEventListener('pointercancel', (e) => {
+      if (this.isDragging && e.pointerId === this.dragPointerId) {
+        this.isDragging = false;
+        try {
+          this.canvas.releasePointerCapture(e.pointerId);
+        } catch (err) {}
+      }
     });
 
     // Fallback detection for touch pointer type to show mobile overlays
