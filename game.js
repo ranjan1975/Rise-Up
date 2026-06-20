@@ -651,14 +651,15 @@ class GameEngine {
       hasShield: false
     });
 
-    // Populate initial clouds
-    for (let i = 0; i < 5; i++) {
+    // Populate initial clouds (with varying sizes for 3D depth)
+    for (let i = 0; i < 7; i++) {
+      const scale = 0.25 + Math.random() * 1.55;
       this.clouds.push({
         x: Math.random() * this.virtualWidth,
         y: Math.random() * this.virtualHeight,
-        speed: 30 + Math.random() * 20,
-        scale: 0.6 + Math.random() * 0.8,
-        opacity: 0.3 + Math.random() * 0.4
+        speed: 15 + Math.random() * 15,
+        scale: scale,
+        opacity: Math.min(0.85, 0.12 + scale * 0.35)
       });
     }
 
@@ -1107,14 +1108,15 @@ class GameEngine {
     // 3. Spawners
     // Spawn Clouds
     this.spawnTimers.cloud += envDt;
-    if (this.spawnTimers.cloud > 2.5) {
+    if (this.spawnTimers.cloud > 1.4) {
       this.spawnTimers.cloud = 0;
+      const scale = 0.25 + Math.random() * 1.55;
       this.clouds.push({
         x: Math.random() * this.virtualWidth,
-        y: -100,
-        speed: 20 + Math.random() * 20,
-        scale: 0.5 + Math.random() * 0.8,
-        opacity: 0.2 + Math.random() * 0.3
+        y: -200 * scale,
+        speed: 10 + Math.random() * 15,
+        scale: scale,
+        opacity: Math.min(0.85, 0.12 + scale * 0.35)
       });
     }
 
@@ -1256,9 +1258,9 @@ class GameEngine {
       }
     }
 
-    // 4. Update Clouds
-    this.clouds.forEach(c => c.y += (this.scrollSpeed + c.speed) * envDt);
-    this.clouds = this.clouds.filter(c => c.y < this.virtualHeight + 100);
+    // 4. Update Clouds (with 3D parallax speed matching depth scale)
+    this.clouds.forEach(c => c.y += (this.scrollSpeed * c.scale + c.speed * c.scale) * envDt);
+    this.clouds = this.clouds.filter(c => c.y < this.virtualHeight + 200 * c.scale);
 
     // 5. Update Coin Bags
     this.coinBags.forEach(bag => {
@@ -2026,6 +2028,10 @@ class GameEngine {
 
     // 2. Draw Clouds (Background Layer)
     this.ctx.fillStyle = this.isNightMode ? 'rgba(15, 23, 42, 0.4)' : 'rgba(255, 255, 255, 0.65)';
+    
+    // Sort clouds by scale (Painters Algorithm for correct 3D depth layering)
+    this.clouds.sort((a, b) => a.scale - b.scale);
+    
     this.clouds.forEach(c => {
       this.ctx.save();
       this.ctx.translate(c.x, c.y);
